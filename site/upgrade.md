@@ -1,24 +1,58 @@
 # Upgrading RabbitMQ
 
-## Intro
+## <a id="overview" class="anchor" href="#overview">Overview</a>
 
 This guide covers topics related to RabbitMQ installation upgrades.
 
 It is important to consider a number of things before upgrading RabbitMQ.
 
+1. [An overview](#basics) of how RabbitMQ can be upgraded
 1. [RabbitMQ version upgradability](#rabbitmq-version-upgradability), version upgrading from &amp; version upgrading to
 1. [Erlang version requirement](#rabbitmq-erlang-version-requirement)
-1. [Plugin compatiblity between versions](#rabbitmq-plugins-compatibility)
-1. [Changes in system resource usage and reporting](#system-resource-usage) in the new version.
-1. [Cluster configuration](#rabbitmq-cluster-configuration), single node vs. multiple nodes
+1. [Plugin compatibility between versions](#rabbitmq-plugins-compatibility)
+1. Features [that do not support in-place upgrade](#unsupported-inplace-upgrade)
+1. [Changes in system resource usage and reporting](#system-resource-usage) in the new version
+1. How upgrades of [multi-node clusters](#clusters) is different from those with only a single node
+1. Marking [nodes for maintenance](#maintenance-mode)
 1. [Caveats](#caveats)
 1. [Handling node restarts](#rabbitmq-restart-handling) in applications
 
 Changes between RabbitMQ versions are documented in the [change log](/changelog.html).
 
-Instead of a regular ("in place") upgrade, a strategy known as [blue-green deployment](blue-green-upgrade.html)
-can be used. It has the benefit of making the upgrade process safier at the cost of having
-to spawn an entire new RabbitMQ cluster.
+
+## <a id="basics" class="anchor" href="#basics">Basics</a>
+
+There are two major upgrade scenarios that are covered in this guide: a [single node](#single-node-upgrade) and a [cluster](#multiple-nodes-upgrade),
+and two most commonly used strategies:
+
+ * In-place upgrade where each node is upgraded with its existing on disk data
+ * [Blue-green deployment](blue-green-upgrade.html) where a new cluster is created and existing data is migrated to it
+
+### In-place Upgrades
+
+An in-place upgrade usually involves the following steps performed by a deployment tool or manually
+by an operator. Each step is covered in more detail later in this guide. An intentionally oversimplified
+list of steps would include:
+
+ * Investigate if the current and target versions have an in-place upgrade path: check [version upgradability](#rabbitmq-version-upgradability), [Erlang version requirements](#rabbitmq-erlang-version-requirement), release notes, [features that do not support in-place upgrades](#unsupported-inplace-upgrade), and [known caveats](#caveats)
+ * Check that the node or cluster is in a good state in order to be upgraded: no [alarms](/alarms.html) are in effect, no ongoing queue synchronisation operations
+   and the system is otherwise under a reasonable load
+ * Stop the node
+ * Upgrade RabbitMQ and, if applicable, Erlang
+ * Start the node
+ * Watch [monitoring and health check](/monitoring.html) data to assess the health and recovery of the upgraded node or cluster
+
+[Rolling upgrades](#rolling-upgrades) between certain versions are not supported. [Full Stop Upgrades](#full-stop-upgrades) covers
+the process for those cases.
+
+### Blue-Green Deployment Upgrades
+
+The Blue/Green deployment strategy offers the benefit of making the upgrade process safer at the cost of
+temporary increasing infrastructure footprint. The safety aspect comes from the fact that the operator
+can abort an upgrade by switching applications back to the existing cluster.
+
+The rest of the guide covers each upgrade step in more details.
+
 
 ## <a id="rabbitmq-version-upgradability" class="anchor" href="#rabbitmq-version-upgradability">RabbitMQ Version Upgradability</a>
 
@@ -26,20 +60,36 @@ When an upgrade jumps multiple release series (e.g. goes from `3.4.x` to `3.6.x`
 an intermediate upgrade first. For example, when upgrading from `3.2.x` to `3.7.x`, it would be necessary to
 first upgrade to 3.6.x and then upgrade to 3.7.0.
 
-Please note that a [full cluster stop](#full-stop-upgrades) is required for feature version upgrades.
+A [full cluster stop](#full-stop-upgrades) may be required for feature version upgrades.
 
 Current release series upgrade compatibility with full stop upgrade:
 
 | From     | To     |
 |----------|--------|
+| 3.8.x    | 3.9.x  |
+| 3.7.27   | 3.9.x  |
+| 3.6.x    | 3.8.x  |
 | 3.6.x    | 3.7.x  |
 | 3.5.x    | 3.7.x  |
 | =< 3.4.x | 3.6.16 |
 
+`3.7.18` and later `3.7.x` versions support [rolling upgrades](#rolling-upgrades) to `3.8.x` using [feature flags](/feature-flags.html).
+
+
 ## <a id="rabbitmq-erlang-version-requirement" class="anchor" href="#rabbitmq-erlang-version-requirement">Erlang Version Requirements</a>
 
-We recommended that you upgrade Erlang together with RabbitMQ.
+We recommend that you upgrade Erlang together with RabbitMQ.
 Please refer to the [Erlang Version Requirements](/which-erlang.html) guide.
+
+
+## <a id="unsupported-inplace-upgrade" class="anchor" href="#unsupported-inplace-upgrade">Features that Do Not Support In-place Upgrades</a>
+
+[Priority queue](/priority.html) on disk data currently cannot be migrated in place between 3.6 and 3.7 (a later series).
+If an upgrade is performed in place, such queues would start empty (without any messages) after node restart.
+
+To migrate an environment with priority queues and preserve their content (messages),
+a [blue-green upgrade](blue-green-upgrade.html) strategy should be used.
+
 
 ## <a id="rabbitmq-plugins-compatibility" class="anchor" href="#rabbitmq-plugins-compatibility">Plugin Compatibility Between Versions</a>
 
@@ -50,7 +100,7 @@ introduces no breaking changes within a release series (e.g. between
 the new RabbitMQ version series.
 
 In rare cases patch versions of RabbitMQ (e.g. 3.6.7) can break some plugin APIs.
-Such cases will be documented the breaking changes section of the release notes document.
+Such cases will be documented in the breaking changes section of the release notes document.
 
 [Community plugins page](/community-plugins.html) contains information on RabbitMQ
 version support for plugins not included into the RabbitMQ distribution.
@@ -119,7 +169,8 @@ frequent memory alarms and publishers will be blocked more often. On the upside
 this means that RabbitMQ nodes are less likely to be killed by the out-of-memory (OOM) mechanism
 of the OS.
 
-## <a id="rabbitmq-cluster-configuration" class="anchor" href="#rabbitmq-cluster-configuration">RabbitMQ Cluster Configuration</a>
+
+## <a id="clusters" class="anchor" href="#clusters">Single Node and Cluster Upgrades</a>
 
 ### <a id="single-node-upgrade" class="anchor" href="#single-node-upgrade">Upgrading a Single Node Installation</a>
 
@@ -155,16 +206,30 @@ stopped, then restarted. This is referred to as a full stop upgrade.
 Client (application) connections will be dropped when each node stops. Applications need to be
 prepared to handle this and reconnect.
 
-#### <a id="rolling-upgrades" class="anchor" href="#rolling-upgrades">Rolling Upgrades</a>
+### <a id="rolling-upgrades" class="anchor" href="#rolling-upgrades">Rolling Upgrades</a>
 
-##### <a id="rolling-upgrades-version-limitations" class="anchor" href="#rolling-upgrades-version-limitations">Version limitations</a>
+Rolling upgrades are possible only between compatible RabbitMQ and Erlang versions.
 
-Rolling upgrades are possible only between some RabbitMQ and Erlang versions.
+#### <a id="rolling-upgrade-starting-with-3.8" class="anchor" href="#rolling-upgrade-starting-with-3.8">With RabbitMQ 3.8 or Later Versions</a>
 
-When upgrading from one major or minor version of RabbitMQ to another
-(i.e. from 3.0.x to 3.1.x, or from 2.x.x to 3.x.x),
-the whole cluster must be taken down for the upgrade.
-Clusters that include nodes that run different release series are not supported.
+RabbitMQ 3.8.0 comes with a [feature flag](/feature-flags.html) subsystem which is
+responsible for determining if two versions of RabbitMQ are compatible.
+If they are, then two nodes with different versions can live in the
+same cluster: this allows a rolling upgrade of cluster members without
+shutting down the cluster entirely.
+
+The upgrade from RabbitMQ 3.7.x to 3.8.x is also permitted, but not from
+older minor or major versions.
+
+To learn more, please read the [feature flags documentation](/feature-flags.html).
+
+#### <a id="rolling-upgrade-before-3.8" class="anchor" href="#rolling-upgrade-before-3.8">Before RabbitMQ 3.8</a>
+
+With RabbitMQ up-to and including 3.7.x, when upgrading from one major
+or minor version of RabbitMQ to another (i.e. from 3.0.x to 3.1.x, or
+from 2.x.x to 3.x.x), the whole cluster must be taken down for the
+upgrade. Clusters that include nodes that run different release series
+are not supported.
 
 Rolling upgrades from one patch version to
 another (i.e. from 3.6.x to 3.6.y) are supported except when indicated otherwise
@@ -177,7 +242,7 @@ Some patch releases known to require a cluster-wide restart:
 * 3.6.6 and later cannot be mixed with earlier versions from the 3.6.x series
 * 3.0.0 cannot be mixed with later versions from the 3.0.x series
 
-***A RabbitMQ node will fail to [re-]join a peer running an incompatible version***.
+**A RabbitMQ node will fail to [re-]join a peer running an incompatible version**.
 
 When upgrading Erlang it's advised to run all nodes on the same major series
 (e.g. 19.x or 20.x). Even though it is possible to run a cluster with mixed
@@ -190,22 +255,139 @@ refuse to join its peer (cluster).
 Upgrading to a new minor or patch version of Erlang usually can be done using
 a rolling upgrade.
 
-##### <a id="rolling-upgrades-restarting-nodes" class="anchor" href="#rolling-upgrades-restarting-nodes">Restarting nodes</a>
+
+### <a id="rolling-upgrades-restarting-nodes" class="anchor" href="#rolling-upgrades-restarting-nodes">When to Restart Nodes</a>
 
 It is important to let the node being upgraded to fully start and sync
 all data from its peers before proceeding to upgrade the next one. You
 can check for that via the management UI. Confirm that:
 
-* the `rabbitmqctl wait &lt;pidfile&gt;` command returns;
-* the node is fully started from the overview page;
-* queues are [synchronised](#mirrored-queues-synchronisation) from the queues list.
+* the `rabbitmqctl await_startup` (or `rabbitmqctl wait &lt;pidfile&gt;`) command returns
+* the node starts and rejoins its cluster according to the management overview page or `rabbitmq-diagnostics cluster_status`
+* the node is not quorum-critical for any [quorum queues](#quorum-queues) it hosts
+* all classic mirrored queues have [synchronised mirrors](#mirrored-queues-synchronisation)
 
-During a rolling upgrade connections and queues will be rebalanced.
-This will put more load on the broker. This can impact performance
-and stability of the cluster. It's not recommended to perform rolling
-upgrades under high load.
+During a rolling upgrade, client connection recovery will make sure that connections
+are rebalanced. Primary queue replicas will migrate to other nodes.
+In practice this will put more load on the remaining cluster nodes.
+This can impact performance and stability of the cluster.
+It's not recommended to perform rolling upgrades under high load.
 
-#### <a id="full-stop-upgrades" class="anchor" href="#full-stop-upgrades">Full-Stop Upgrades</a>
+Starting with RabbitMQ 3.8.8, nodes can be put into maintenance mode to prepare them for
+shutdown during rolling upgrades.
+
+
+## <a id="maintenance-mode" class="anchor" href="#maintenance-mode">Maintenance Mode</a>
+
+### What is Maintenance Mode?
+
+Maintenance mode is a special node operation mode introduced in latest RabbitMQ releases.
+The mode is explicitly turned on and off by the operator using a bunch of new CLI commands covered below.
+For mixed-version cluster compatibility, this feature must be [enabled using a feature flag](/feature-flags.html)
+once all cluster members have been upgraded to a version that supports it:
+
+<pre class="lang-bash">
+rabbitmqctl enable_feature_flag maintenance_mode_status
+</pre>
+
+### Put a Node into Maintenance Mode
+
+To put a node under maintenance, use `rabbitmq-upgrade drain`:
+
+<pre class="lang-bash">
+rabbitmq-upgrade drain
+</pre>
+
+As all other CLI commands, this command can be invoked against an arbitrary node (including remote ones)
+using the `-n` switch:
+
+<pre class="lang-bash">
+# puts node rabbit@node2.cluster.rabbitmq.svc into maintenance mode
+rabbitmq-upgrade drain -n rabbit@node2.cluster.rabbitmq.svc
+</pre>
+
+When a node is in maintenance mode, it **will not be available for serving client traffic**
+and will try to transfer as many of its responsibilities as practically possible and safe.
+
+Currently this involves the following steps:
+
+* Suspend all client connection listeners (no new client connections will be accepted)
+* Close all existing client connections: applications are expected to reconnect to other nodes and recover
+* Transfer primary replicas of all quorum queues hosted on the target node, and prevent them from participating
+    in the subsequently triggered Raft elections
+* Mark the node as down for maintenance
+* At this point, a node shutdown will be least disruptive as the node has already transferred most of its
+    responsibilities
+
+A node in maintenance mode will not be considered for new primary queue replica placement, regardless
+of queue type and the [queue leader locator policy](/ha.html#leader-migration-data-locality) used.
+
+This feature is expected to evolve based on the feedback from RabbitMQ operators, users,
+and RabbitMQ core team's own experience with it.
+
+A node in maintenance mode is expected to be shut down, upgraded or reconfigured, and restarted in a short
+period of time (say, 5-30 minutes). Nodes are not expected to be running in this mode for long periods of time.
+
+### Revive a Node from Maintenance Mode
+
+A node in maintenance mode can be *revived*, that is, **brought back into its regular operational state**,
+using `rabbitmq-upgrade revive`:
+
+<pre class="lang-bash">
+rabbitmq-upgrade revive
+</pre>
+
+As all other CLI commands, this command can be invoked against an arbitrary node (including remote ones)
+using the `-n` switch:
+
+<pre class="lang-bash">
+# revives node rabbit@node2.cluster.rabbitmq.svc from maintenance
+rabbitmq-upgrade revive -n rabbit@node2.cluster.rabbitmq.svc
+</pre>
+
+When a node is revived or restarted (e.g. after an upgrade), it will again accept client connections
+and be considered for primary queue replica placements.
+
+It will not recover previous client connections as RabbitMQ never initiates connections
+to clients, but clients will be able to reconnect to it.
+
+### Verify Maintenance Status of a Node
+
+If the maintenance mode status feature flag is enabled, node maintenance status will be reported
+in `rabbitmq-diagnostics status` and `rabbitmq-diagnostics cluster_status`.
+
+If the feature flag is not enabled, the status will be reported as unknown.
+
+Here's an example `rabbitmq-diagnostics status` output of a node under maintenance:
+
+<pre class="lang-plaintext">
+Status of node rabbit@hostname ...
+Runtime
+
+OS PID: 25531
+OS: macOS
+Uptime (seconds): 48540
+Is under maintenance?: true
+
+# ...
+</pre>
+
+Compare this to this example output from a node in regular operating mode:
+
+<pre class="lang-plaintext">
+Status of node rabbit@hostname ...
+Runtime
+
+OS PID: 25531
+OS: macOS
+Uptime (seconds): 48540
+Is under maintenance?: false
+
+# ...
+</pre>
+
+
+## <a id="full-stop-upgrades" class="anchor" href="#full-stop-upgrades">Full-Stop Upgrades</a>
 
 When an entire cluster is stopped for upgrade, the order in which nodes are
 stopped and started is important.
@@ -229,9 +411,6 @@ which disc node will be the upgrader, stop that node last, and start it first.
 Otherwise changes to the cluster configuration that were made between the
 upgrader node stopping and the last node stopping will be lost.
 
-Automatic upgrades are only possible from RabbitMQ versions 2.1.1 and later.
-If you have an earlier cluster, you will need to rebuild it to upgrade.
-
 ## <a id="caveats" class="anchor" href="#caveats">Caveats</a>
 
 There are some minor things to consider during upgrade process when stopping and
@@ -245,6 +424,8 @@ during shutdown, which blocks subsequent upgrade steps:
 * [OTP-14441](https://bugs.erlang.org/browse/ERL-430): fixed in Erlang/OTP `19.3.6` and `20.0`
 * [OTP-14509](https://bugs.erlang.org/browse/ERL-448): fixed in Erlang/OTP `19.3.6.2` and `20.0.2`
 
+Please note that both issues affect old and [no longer supported version of Erlang](/which-erlang.html).
+
 A node that suffered from the above bugs will fail to shut down and stop responding to inbound
 connections, including those of CLI tools. Such node's OS process has to be terminated
 (e.g. using `kill -9` on UNIX systems).
@@ -257,62 +438,108 @@ The following commands can be used to verify whether a node is experience the ab
 An affected node will not respond to CLI connections in a reasonable amount of time
 when performing the following basic commands:
 
-<pre class="sourcecode sh">
-rabbitmqctl status
-rabbitmqctl eval "ok."
+<pre class="lang-bash">
+rabbitmq-diagnostics ping
+rabbitmq-diagnostics status
 </pre>
 
-### <a id="mirrored-queues-synchronisation" class="anchor" href="#mirrored-queues-synchronisation">Mirrored queues synchronisation</a>
+### <a id="quorum-queues" class="anchor" href="#quorum-queues">Quorum Queues</a>
 
-Before stopping a node, make ensure that
-all mirrored queue masters it holds have at least one synchronised queue mirror.
-RabbitMQ will not promote unsynchronised queue mirrors on controlled
-queue master shutdown when
-[default promotion settings](ha.html#promotion-while-down) are used.
-However if a queue master encounters any errors during shutdown, an unsynchronised
-queue slave might still be promoted. It is generally safier option to synchronise
-a queue first.
+[Quorum queues](/quorum-queues.html) depend on a [quorum](/quorum-queues.html#what-is-quorum) of nodes to
+be online for any queue operations to succeed. This includes successful new leader election should
+a cluster node that hosts some leaders shut down.
 
-This can be verified by listing queues in the management UI or using `rabbitmqctl`:
+In the context of rolling upgrades this means that a quorum of nodes must be present at all times
+during an upgrade. If this is not the case, quorum queues will become unavailable and will be not
+able to satisfy their data safety guarantees.
 
-<pre class="sourcecode sh">
+Latest RabbitMQ releases provide a [health check](/monitoring.html#health-checks) command that would fail
+should any quorum queues on the target node lose their quorum in case the node was to be shut down:
+
+<pre class="lang-bash">
+# Exits with a non-zero code if one or more quorum queues will lose online quorum
+# should target node be shut down
+rabbitmq-diagnostics check_if_node_is_quorum_critical
+</pre>
+
+For example, consider a three node cluster with nodes A, B, and C. If node B is currently down
+and there are quorum queues with leader replica on node A, this check will fail if executed
+against node A. When node B comes back online, the same check would succeed because
+the quorum queues with leader on node A would have a quorum of replicas online.
+
+Quorum queue quorum state can be verified by listing queues in the management UI or using `rabbitmq-queues`:
+
+<pre class="lang-bash">
+rabbitmq-queues -n rabbit@to-be-stopped quorum_status &lt;queue name&gt;
+</pre>
+
+### <a id="mirrored-queues-synchronisation" class="anchor" href="#mirrored-queues-synchronisation">Mirrored Queues Replica Synchronisation</a>
+
+In environments that use [classic mirrored queues](/ha.html), it is important to make sure that all mirrored queues on a node
+have a synchronised follower replica (mirror) **before stopping that node**.
+
+RabbitMQ will not promote unsynchronised queue mirrors on controlled queue leader shutdown when
+[default promotion settings](/ha.html#promotion-while-down) are used.
+However if a queue leader encounters any errors during shutdown, an [unsynchronised queue mirror](/ha.html#unsynchronised-mirrors)
+might still be promoted. It is generally safer option to synchronise all classic mirrored queues
+with replicas on a node before shutting the node down.
+
+Latest RabbitMQ releases provide a [health check](/monitoring.html#health-checks) command that would fail
+should any classic mirrored queues on the target node have no synchronised mirrors:
+
+<pre class="lang-bash">
+# Exits with a non-zero code if target node hosts leader replica of at least one queue
+# that has out-of-sync mirror.
+rabbitmq-diagnostics check_if_node_is_mirror_sync_critical
+</pre>
+
+For example, consider a three node cluster with nodes A, B, and C. If there are classic mirrored queues
+with the only synchronised replica on node A (the leader), this check will fail if executed
+against node A. When one of other replicas is re-synchronised, the same check would succeed because
+there would be at least one replica suitable for promotion.
+
+Classic mirrored queue replica state can be verified by listing queues in the management UI or using `rabbitmqctl`:
+
+<pre class="lang-bash">
 # For queues with non-empty `slave_pids`, you must have at least one
 # `synchronised_slave_pids`.
 rabbitmqctl -n rabbit@to-be-stopped list_queues --local name slave_pids synchronised_slave_pids
 </pre>
 
 If there are unsynchronised queues, either enable
-automatic synchronisation or [trigger it using
-`rabbitmqctl`](ha.html#unsynchronised-mirrors) manually.
+automatic synchronisation or [trigger it using `rabbitmqctl`](ha.html#unsynchronised-mirrors) manually.
 
 RabbitMQ shutdown process will not wait for queues to be synchronised
 if a synchronisation operation is in progress.
 
-### <a id="mirrored-queue-masters-rebalance" class="anchor" href="#mirrored-queue-masters-rebalance">Mirrored queue masters rebalancing</a>
+### <a id="mirrored-queue-masters-rebalance" class="anchor" href="#mirrored-queue-masters-rebalance">Mirrored queue leaders rebalancing</a>
 
-Some upgrade scenarios can cause mirrored queue masters to be unevenly distributed
-between nodes in a cluster. This will put more load on the nodes with more queue masters.
-For example a full-stop upgrade will make all queue masters migrate to the "upgrader" node -
+Some upgrade scenarios can cause mirrored queue leaders to be unevenly distributed
+between nodes in a cluster. This will put more load on the nodes with more queue leaders.
+For example a full-stop upgrade will make all queue leaders migrate to the "upgrader" node -
 the one stopped last and started first.
-A rolling upgrade of three nodes with two mirrors will also cause all queue masters to be on the same node.
+A rolling upgrade of three nodes with two mirrors will also cause all queue leaders to be on the same node.
 
-You can move a queue master for a queue using a temporary [policy](/parameters.html) with
+You can move a queue leader for a queue using a temporary [policy](/parameters.html) with
 `ha-mode: nodes` and `ha-params: [&lt;node&gt;]`
 The policy can be created via management UI or rabbitmqctl command:
-<pre class="sourcecode sh">
+
+<pre class="lang-bash">
 rabbitmqctl set_policy --apply-to queues --priority 100 move-my-queue '^&lt;queue&gt;$;' '{"ha-mode":"nodes", "ha-params":["&lt;new-master-node&gt;"]}'
 rabbitmqctl clear_policy move-my-queue
 </pre>
 
-A [queue master rebalancing script](https://github.com/rabbitmq/support-tools/blob/master/scripts/rebalance-queue-masters)
-is available. It rebalances queue masters for all queues.
+A [queue leader rebalancing script](https://github.com/rabbitmq/support-tools/blob/master/scripts/rebalance-queue-masters)
+is available. It rebalances queue leaders for all queues.
 
 The script has certain assumptions (e.g. the default node name) and can fail to run on
 some installations. The script should be considered
 experimental. Run it in a non-production environment first.
 
+A [queue leader rebalance command](https://www.rabbitmq.com/rabbitmq-queues.8.html) is available. It rebalances queue leaders for all queues, or those that match the given name pattern. queue leaders for mirrored queues and leaders for quorum queues are also rebalanced in the [post-upgrade command](https://www.rabbitmq.com/rabbitmq-upgrade.8.html).
+
 There is also a [third-party plugin](https://github.com/Ayanda-D/rabbitmq-queue-master-balancer)
-that rebalances queue masters. The plugin has some additional configuration and reporting tools,
+that rebalances queue leaders. The plugin has some additional configuration and reporting tools,
 but is not supported or verified by the RabbitMQ team. Use at your own risk.
 
 
@@ -337,7 +564,7 @@ The recovery procedure for many applications follows the same steps:
 1. Reconnect
 2. Re-open channels
 3. Restore channel settings (e.g. the [`basic.qos` setting](/confirms.html), publisher confirms)
-4. Recovery topology
+4. Recover topology
 
 Topology recovery includes the following actions, performed for every channel:
 
@@ -356,9 +583,17 @@ or by specifying multiple server hosts if client library supports this feature.
 
 The following libraries support host lists:
 
-* [Java client](https://rabbitmq.github.io/rabbitmq-java-client/api/current/com/rabbitmq/client/ConnectionFactory.html#newConnection-com.rabbitmq.client.Address:A-)
-* [.NET client](https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/master/projects/client/RabbitMQ.Client/src/client/api/ConnectionFactory.cs#L376)
+* [Java client](https://rabbitmq.github.io/rabbitmq-java-client/api/current/com/rabbitmq/client/ConnectionFactory.html#newConnection%28com.rabbitmq.client.Address%5B%5D%29)
+* [.NET client](https://github.com/rabbitmq/rabbitmq-dotnet-client/blob/master/projects/RabbitMQ.Client/client/api/ConnectionFactory.cs#L392)
 * [Bunny](http://api.rubybunny.info/Bunny/Session.html#constructor_details)
+
+
+## <a id="windows-upgrade-caveats" class="anchor" href="#windows-upgrade-caveats">Windows</a>
+
+If the value of the environment variable `COMPUTERNAME` does not equal
+`HOSTNAME` (upper vs lower case, or other differences) please see the [Windows
+Quirks guide](/windows-quirks.html#computername-vs-hostname) for instructions
+on how to upgrade RabbitMQ.
 
 ## <a id="recommended-upgrade-steps" class="anchor" href="#recommended-upgrade-steps">Recommended Upgrade Steps</a>
 
@@ -372,12 +607,12 @@ The following libraries support host lists:
     Minor version releases contain new features and bugfixes
     which do not fit a patch release.
 
-    As soon as a new minor version is released (e.g. 3.7.0), previous verison series (3.6)
-    will have patch releases for critical bugfixes only.
+    As soon as a new minor version is released (e.g. 3.7.0), previous version series (3.6)
+    will have patch releases for critical bug fixes only.
 
-    There will be no new patch releases for versions after EOL.
+    There will be no new patch releases for [versions after EOL](/versions.html).
 
-    Version 3.5.x reached it's end of life on 2017-09-11, 3.5.8 is the last patch for 3.5.
+    Version 3.5.x reached its end of life on 2017-09-11, 3.5.8 is the last patch for 3.5.
     It's recommended to always upgrade at least to the latest patch release in a series.
 
 1. Read carefully the release notes up to the selected RabbitMQ version.
@@ -435,18 +670,18 @@ The following libraries support host lists:
 
     We recommend recording the number of durable queues, the number
     of messages they hold and other pieces of information about the
-    topology that are relevant. This data wil help verify that the
+    topology that are relevant. This data will help verify that the
     system operates within reasonable parameters after the upgrade.
 
     Use the `rabbitmqctl node_health_check` command to
     vet individual nodes.
 
     Queues in flow state or blocked/blocking connections might be ok,
-    depending on your workload. It's up to you to determinate if this is
+    depending on your workload. It's up to you to determine if this is
     a normal situation or if the cluster is under unexpected load and
     thus, decide if it's safe to continue with the upgrade.
 
-    However, if there queues in an undefined state (a.k.a. `NaN` or
+    However, if there are queues in an undefined state (a.k.a. `NaN` or
     "ghost" queues), you should first start by understanding what is
     wrong before starting an upgrade.
 
@@ -460,9 +695,9 @@ The following libraries support host lists:
     before the upgrade. Default memory watermark is 0.4 so it should be
     ok, but you should still double-check. Starting with RabbitMQ `3.6.11`
     the way nodes [calculate their total RAM consumption](/memory-use.html) has changed.
-    When upgrading from an earlier version.
 
-    It is required that the node has enough free disk space to fit at
+    When upgrading from an earlier version,
+    it is required that the node has enough free disk space to fit at
     least a full copy of the node data directory. Nodes create backups
     before proceeding to upgrade their database. If disk space is
     depleted, the node will abort upgrading and may fail to start
@@ -517,3 +752,10 @@ The following libraries support host lists:
     Like you did before the upgrade, verify the health and data to
     make sure your RabbitMQ nodes are in good shape and the service is
     running again.
+
+1. Check new feature flags
+
+    If the new version provides new feature flags, you can
+    now enable them if you upgraded all nodes and you are
+    sure you do not want to rollback. See the [feature flags
+    documentation](/feature-flags.html).

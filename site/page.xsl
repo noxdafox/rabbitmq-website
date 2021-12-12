@@ -6,22 +6,22 @@
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
                 xmlns="http://www.w3.org/1999/xhtml"
                 xmlns:html="http://www.w3.org/1999/xhtml"
-                xmlns:doc="http://www.rabbitmq.com/namespaces/ad-hoc/doc"
-                xmlns:r="http://www.rabbitmq.com/namespaces/ad-hoc/conformance"
+                xmlns:doc="https://www.rabbitmq.com/namespaces/ad-hoc/doc"
+                xmlns:r="https://www.rabbitmq.com/namespaces/ad-hoc/conformance"
                 xmlns:xi="http://www.w3.org/2003/XInclude"
-                xmlns:x="http://www.rabbitmq.com/2011/extensions"
+                xmlns:x="https://www.rabbitmq.com/2011/extensions"
                 exclude-result-prefixes="r doc html xi x"
                 version="1.0">
 
 <!--
-Copyright (c) 2007-2017 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,13 +38,15 @@ limitations under the License.
 
   <xsl:template match="html:head">
     <head>
-      <!-- Google Tag Manager -->
-      <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-      j=d.createElement(s),dl=l!='dataLayer'?'&amp;l='+l:'';j.async=true;j.src=
-      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-      })(window,document,'script','dataLayer','GTM-NSPM4RC');</script>
-      <!-- End Google Tag Manager -->
+      <!-- OneTrust Cookie Consent -->
+      <meta content='73d8ba46-8c12-43f6-8c22-24aa21b8d93d' name='onetrust-data-domain'/>
+      <meta content='https://tags.tiqcdn.com/utag/vmware/microsites-privacy/prod/utag.js' name='microsites-utag'/>
+      <script src='https://d1fto35gcfffzn.cloudfront.net/assets/jquery-1.11.2.min.js'></script>
+      <script src='//www.vmware.com/files/templates/inc/utag_data.js'></script>
+      <script src='//tags.tiqcdn.com/utag/vmware/microsites-privacy/prod/utag.sync.js'></script>
+      <script>function OptanonWrapper() { { window.dataLayer.push({ event: 'OneTrustGroupsUpdated' }); } }</script>
+      <script src="/js/gtm.js"></script>
+      <!-- End OneTrust Cookie Consent -->
 
       <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
       <meta name="googlebot" content="NOODP"/>
@@ -82,10 +84,6 @@ limitations under the License.
 
   <xsl:template match="html:body">
     <body id="{$page-id}">
-      <!-- Google Tag Manager (noscript) -->
-      <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NSPM4RC"
-      height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-      <!-- End Google Tag Manager (noscript) -->
       <div id="outerContainer">
         <div class="container">
           <xsl:call-template name="page-header"/>
@@ -135,7 +133,29 @@ limitations under the License.
       <script type="text/javascript">
         // code highlighting
         window.addEventListener("load", function() {
-          document.querySelectorAll("pre.sourcecode").forEach(function(el) {
+          const selectors = "pre.lang-bash, \
+                             pre.lang-csharp, \
+                             pre.lang-elixir, \
+                             pre.lang-erlang, \
+                             pre.lang-go, \
+                             pre.lang-groovy, \
+                             pre.lang-haskell, \
+                             pre.lang-html, \
+                             pre.lang-ini, \
+                             pre.lang-java, \
+                             pre.lang-javascript, \
+                             pre.lang-json, \
+                             pre.lang-makefile, \
+                             pre.lang-objectivec, \
+                             pre.lang-php, \
+                             pre.lang-plaintext, \
+                             pre.lang-powershell, \
+                             pre.lang-python, \
+                             pre.lang-ruby, \
+                             pre.lang-swift, \
+                             pre.lang-yaml, \
+                             pre.lang-xml";
+          document.querySelectorAll(selectors).forEach(function(el) {
             hljs.highlightBlock(el);
           });
         });
@@ -146,7 +166,7 @@ limitations under the License.
   <!-- Remember to edit the wordpress template too! -->
   <xsl:template name="page-header">
     <div class="rabbit-logo">
-      <a href="/"><img src="/img/RabbitMQ-logo.svg" alt="RabbitMQ"/></a>
+      <a href="/"><img src="/img/logo-rabbitmq.svg" alt="RabbitMQ"/></a>
     </div>
     <a class='btn menubtn' onclick='showHide()'>Menu <img src="/img/carrot-down-white.svg"/></a>
     <div class='mobilemenuicon' onclick='showHide()'><img src="/img/mobile-menu-icon.svg"/></div>
@@ -158,7 +178,7 @@ limitations under the License.
         <li><a href="/#community">Community</a></li>
         <li><a href="/documentation.html">Docs</a></li>
         <xsl:if test="$site-mode = 'www'">
-          <li><a href="/blog/">Blog</a></li>
+          <li><a href="https://blog.rabbitmq.com/">Blog</a></li>
         </xsl:if>
       </ul>
     </div>
@@ -168,9 +188,14 @@ limitations under the License.
   <xsl:template name="page-footer">
     <div class="clear"/>
     <div class="pageFooter">
+    <div class='container'>
+<!--       <a id='s1p-promo' href='https://springone.io?utm_campaign=SpringOne-July9&amp;utm_source=rabbit-site-footer&amp;utm_medium=website' target="_blank">
+          <img src='/img/promos/S1-Promo.svg'/>
+      </a> -->
+    </div>
       <div class='container'>
         <div class="rabbit-logo">
-          <a href="/"><img src="/img/RabbitMQ-logo-white.svg" alt="RabbitMQ"/></a>
+          <a href="/"><img src="/img/logo-rabbitmq-white.svg" alt="RabbitMQ"/></a>
         </div>
         <ul class='footerNav'>
           <li><a href="/#features">Features</a></li>
@@ -179,15 +204,16 @@ limitations under the License.
           <li><a href="/#community">Community</a></li>
           <li><a href="/documentation.html">Docs</a></li>
           <xsl:if test="$site-mode = 'www'">
-            <li><a href="/blog/">Blog</a></li>
+            <li><a href="https://blog.rabbitmq.com/">Blog</a></li>
           </xsl:if>
         </ul>
-        <!-- <a id='s1p-promo' href='https://springoneplatform.io/?utm_source=rabbitmq&amp;utm_medium=banner-link&amp;utm_campaign=springone-platform-2018' target="_blank"><img src='/img/promos/S1P-Promo-RabbitMQ-2018.png'/></a> -->
         <p id="copyright">
-          Copyright &#169; 2007-Present <a href="https://pivotal.io/">Pivotal Software</a>, Inc. All rights reserved.
-          <a href="https://pivotal.io/legal">Terms of Use</a>,
-          <a href="https://pivotal.io/privacy-policy">Privacy</a> and
-          <a href="/trademark-guidelines.html">Trademark Guidelines</a>
+          Copyright &#169; 2007-2021 <a href="https://tanzu.vmware.com/">VMware</a>, Inc. or its affiliates. All rights reserved.
+          <a href="https://www.vmware.com/help/legal.html">Terms of Use</a> &#8226;
+          <a href="https://www.vmware.com/help/privacy.html">Privacy</a> &#8226;
+          <a href="/trademark-guidelines.html">Trademark Guidelines</a> &#8226;
+          <a href="https://www.vmware.com/help/privacy/california-privacy-rights.html">Your California Privacy Rights</a> &#8226;
+          <a class="ot-sdk-show-settings">Cookie Settings</a>
           <br/>
           <a id='teconsent'></a>
         </p>
@@ -389,20 +415,6 @@ limitations under the License.
       </tr>
       <xsl:apply-templates/>
     </table>
-  </xsl:template>
-
-  <xsl:template match="r:repository[@type = 'hg']">
-    <tr>
-      <td>
-    <a class="adownload" href="{@url}archive/default.zip"><xsl:value-of select="@shortname"/></a>
-      </td>
-      <td>
-    <code>hg clone <xsl:value-of select="@url"/></code>
-      </td>
-      <td>
-    <a class="arepo" href="{@url}">Browse source</a>
-      </td>
-    </tr>
   </xsl:template>
 
   <xsl:template match="r:repository[@type = 'github']">

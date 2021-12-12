@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,10 @@ limitations under the License.
 -->
 # RabbitMQ tutorial - Remote procedure call (RPC) SUPPRESS-RHS
 
+<xi:include href="site/tutorials/tutorials-help.xml.inc"/>
 ## Remote procedure call (RPC)
 ### (using the Go RabbitMQ client)
 
-<xi:include href="site/tutorials/tutorials-help.xml.inc"/>
 
 
 In the [second tutorial](tutorial-two-go.html) we learned how to
@@ -63,11 +63,11 @@ receive a response we need to send a 'callback' queue address with the
 request. We can use the default queue.
 Let's try it:
 
-<pre class="sourcecode go">
+<pre class="lang-go">
 q, err := ch.QueueDeclare(
   "",    // name
   false, // durable
-  false, // delete when usused
+  false, // delete when unused
   true,  // exclusive
   false, // noWait
   nil,   // arguments
@@ -207,7 +207,7 @@ Putting it all together
 
 The Fibonacci function:
 
-<pre class="sourcecode go">
+<pre class="lang-go">
 func fib(n int) int {
         if n == 0 {
                 return 0
@@ -225,11 +225,10 @@ and it's probably the slowest recursive implementation possible).
 
 The code for our RPC server [rpc_server.go](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/go/rpc_server.go) looks like this:
 
-<pre class="sourcecode go">
+<pre class="lang-go">
 package main
 
 import (
-        "fmt"
         "log"
         "strconv"
 
@@ -264,7 +263,7 @@ func main() {
         q, err := ch.QueueDeclare(
                 "rpc_queue", // name
                 false,       // durable
-                false,       // delete when usused
+                false,       // delete when unused
                 false,       // exclusive
                 false,       // no-wait
                 nil,         // arguments
@@ -328,16 +327,15 @@ The server code is rather straightforward:
     to spread the load equally over multiple servers we need to set the
     `prefetch` setting on channel.
   * We use `Channel.Consume` to get the go channel where we receive messages
-    from the queue. Then we enter the goroutine where do the work and send the response back.
+    from the queue. Then we enter the goroutine where we do the work and send the response back.
 
 
 The code for our RPC client [rpc_client.go](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/go/rpc_client.go):
 
-<pre class="sourcecode go">
+<pre class="lang-go">
 package main
 
 import (
-        "fmt"
         "log"
         "math/rand"
         "os"
@@ -378,7 +376,7 @@ func fibonacciRPC(n int) (res int, err error) {
         q, err := ch.QueueDeclare(
                 "",    // name
                 false, // durable
-                false, // delete when usused
+                false, // delete when unused
                 true,  // exclusive
                 false, // noWait
                 nil,   // arguments
@@ -453,14 +451,14 @@ Now is a good time to take a look at our full example source code for
 
 Our RPC service is now ready. We can start the server:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 go run rpc_server.go
 # => [x] Awaiting RPC requests
 </pre>
 
 To request a fibonacci number run the client:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 go run rpc_client.go 30
 # => [x] Requesting fib(30)
 </pre>

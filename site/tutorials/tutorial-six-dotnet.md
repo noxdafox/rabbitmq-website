@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,7 +41,7 @@ To illustrate how an RPC service could be used we're going to
 create a simple client class. It's going to expose a method named `Call`
 which sends an RPC request and blocks until the answer is received:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 var rpcClient = new RPCClient();
 
 Console.WriteLine(" [x] Requesting fib(30)");
@@ -79,7 +79,7 @@ message and a server replies with a response message. In order to
 receive a response we need to send a 'callback' queue address with the
 request:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 var props = channel.CreateBasicProperties();
 props.ReplyTo = replyQueueName;
 
@@ -98,7 +98,7 @@ channel.BasicPublish(exchange: "",
 > a message. Most of the properties are rarely used, with the exception of
 > the following:
 >
-> * `Persistent`: : Marks a message as persistent (with a value of `2`)
+> * `Persistent`: Marks a message as persistent (with a value of `true`)
 >    or transient (any other value). Take a look at [the second tutorial](tutorial-two-dotnet.html).
 > * `DeliveryMode`: those familiar with the protocol may choose to use this
 >    property instead of `Persistent`. They control the same thing.
@@ -214,7 +214,7 @@ Putting it all together
 
 The Fibonacci task:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 private static int fib(int n)
 {
     if (n == 0 || n == 1) return n;
@@ -229,7 +229,7 @@ and it's probably the slowest recursive implementation possible).
 
 The code for our RPC server [RPCServer.cs](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/dotnet/RPCServer/RPCServer.cs) looks like this:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 using System;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -255,7 +255,7 @@ class RPCServer
             {
                 string response = null;
 
-                var body = ea.Body;
+                var body = ea.Body.ToArray();
                 var props = ea.BasicProperties;
                 var replyProps = channel.CreateBasicProperties();
                 replyProps.CorrelationId = props.CorrelationId;
@@ -317,7 +317,7 @@ The server code is rather straightforward:
 
 The code for our RPC client [RPCClient.cs](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/dotnet/RPCClient/RPCClient.cs):
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 using System;
 using System.Collections.Concurrent;
 using System.Text;
@@ -333,8 +333,8 @@ public class RpcClient
     private readonly BlockingCollection&lt;string&gt; respQueue = new BlockingCollection&lt;string&gt;();
     private readonly IBasicProperties props;
 
-public RpcClient()
-{
+    public RpcClient()
+    {
         var factory = new ConnectionFactory() { HostName = "localhost" };
 
         connection = factory.CreateConnection();
@@ -349,13 +349,18 @@ public RpcClient()
 
         consumer.Received += (model, ea) =&gt;
         {
-            var body = ea.Body;
+            var body = ea.Body.ToArray();
             var response = Encoding.UTF8.GetString(body);
             if (ea.BasicProperties.CorrelationId == correlationId)
             {
                 respQueue.Add(response);
             }
         };
+
+        channel.BasicConsume(
+            consumer: consumer,
+            queue: replyQueueName,
+            autoAck: true);
     }
 
     public string Call(string message)
@@ -367,12 +372,7 @@ public RpcClient()
             basicProperties: props,
             body: messageBytes);
 
-        channel.BasicConsume(
-            consumer: consumer,
-            queue: replyQueueName,
-            autoAck: true);
-
-        return respQueue.Take(); ;
+        return respQueue.Take();
     }
 
     public void Close()
@@ -405,20 +405,18 @@ The client code is slightly more involved:
     we can receive RPC responses.
   * Our `Call` method makes the actual RPC request.
   * Here, we first generate a unique `CorrelationId`
-    number and save it - the while loop will
-    use this value to catch the appropriate response.
+    number and save it to identify the appropriate response when it arrives.
   * Next, we publish the request message, with two properties:
     `ReplyTo` and `CorrelationId`.
   * At this point we can sit back and wait until the proper
     response arrives.
-  * The while loop is doing a very simple job,
-    for every response message it checks if the `CorrelationId`
+  * For every response message the client checks if the `CorrelationId`
     is the one we're looking for. If so, it saves the response.
   * Finally we return the response back to the user.
 
 Making the Client request:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 var rpcClient = new RPCClient();
 
 Console.WriteLine(" [x] Requesting fib(30)");
@@ -436,7 +434,7 @@ Set up as usual (see [tutorial one](tutorial-one-dotnet.html)):
 
 Our RPC service is now ready. We can start the server:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 cd RPCServer
 dotnet run
 # => [x] Awaiting RPC requests
@@ -444,7 +442,7 @@ dotnet run
 
 To request a fibonacci number run the client:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 cd RPCClient
 dotnet run
 # => [x] Requesting fib(30)

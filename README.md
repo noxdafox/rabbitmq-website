@@ -1,14 +1,12 @@
-# [rabbitmq.com](http://www.rabbitmq.com/)
+# [rabbitmq.com](https://www.rabbitmq.com/)
 
-This repository contains source code for [rabbitmq.com](http://www.rabbitmq.com/) content.
+This repository contains source code for [rabbitmq.com](https://www.rabbitmq.com/) content.
 
 All changes that need to be deployed right away need to be committed to the `live` branch.
 
 Changes which should be deployed when the next patch release (a.k.a. stable) of RabbitMQ ships should be committed to the `stable` branch.
 
-Changes which should be deployed when the next 3.6.x patch release of RabbitMQ ships should be committed to the `3.6.x` branch.
-
-Changes which should be deployed when the next minor release (a.k.a. master) of RabbitMQ ships should be committed to the `master` branch.
+Changes which should be deployed when the next minor release (a.k.a. main) of RabbitMQ ships should be committed to the `main` branch.
 
 ## Branches
 
@@ -17,9 +15,9 @@ repository:
 
 Branch        | Description
 :-------------|:--------------------
-`live`         | The current version of the website. This must represent whatever's deployed to [www.rabbitmq.com](http://www.rabbitmq.com/).
-`stable`       | Changes to the website that will correspond to the next point (maintenance) release of RabbitMQ. This gets merged into live when a 3.7.x release occurs.
-master        | Changes to the website that will correspond to the next minor release of RabbitMQ. Periodically deployed to [next.rabbitmq.com](http://next.rabbitmq.com/). This gets merged into stable and then live when a minor release occurs.
+`live`         | The current version of the website. This must represent whatever's deployed to [www.rabbitmq.com](https://www.rabbitmq.com/).
+`stable`       | Changes to the website that will correspond to the next point (maintenance) release of RabbitMQ. This gets merged into live when a patch release occurs.
+`main`       | Changes to the website that will correspond to the next minor release of RabbitMQ. Periodically deployed to [next.rabbitmq.com](http://next.rabbitmq.com/). This gets merged into stable and then live when a minor release occurs.
 
 
 ## Development environment
@@ -60,7 +58,14 @@ sudo pip install lxml markdown
 To run a local copy manually on [localhost:8191](http://localhost:8191), use:
 
 ```sh
-./driver.py [www|next|previous]
+./driver.py
+```
+
+To run a local copy of the "next" version of the site (usually only relevant for `main` and
+documentation work for the next feature release):
+
+```sh
+./driver.py next
 ```
 
 #### On Debian-based Linux
@@ -68,7 +73,7 @@ To run a local copy manually on [localhost:8191](http://localhost:8191), use:
 On Debian and Ubuntu dependencies can be installed via `apt`:
 
 ```sh
-sudo apt-get install python-lxml python-markdown python-pygments
+sudo apt-get install python3-lxml python3-markdown python3-pygments
 ```
 
 To run a local copy manually on [localhost:8191](http://localhost:8191), use:
@@ -93,7 +98,7 @@ modes are:
 Mode     | Description
 :--------|:------------
 www      | This is the "normal" mode. You would normally deploy from the live branch with this mode.
-next     | This is the mode for [next.rabbitmq.com](http://next.rabbitmq.com/). This mode has the home page and download page chopped down, no blog or search, and a watermark. You would normally deploy from the master branch with this mode.
+next     | This is the mode for [next.rabbitmq.com](http://next.rabbitmq.com/). This mode has the home page and download page chopped down, no blog or search, and a watermark. You would normally deploy from the main branch with this mode.
 previous | For [previous.rabbitmq.com](http://previous.rabbitmq.com/). The website is reduced in the same way as "next", but this mode is meant for previous releases rather than future releases.
 
 You determine which mode you are using with an argument to the driver
@@ -102,8 +107,8 @@ the `$page-mode` variable in XSLT.
 
 ### Tutorial Charts (Diagrams)
 
-[diagrams.py](https://github.com/rabbitmq/rabbitmq-website/blob/master/code/diagrams.py) is a script generates PNGs from graph descriptions
-embedded in files. Generally you don't need to run this, since the generated
+[diagrams.py](https://github.com/rabbitmq/rabbitmq-website/blob/main/code/diagrams.py) is a script that generates PNGs from graph descriptions
+embedded in files. Generally, you don't need to run this, since the generated
 PNGs are committed. To work on the diagrams please install Graphviz:
 
 ```sh

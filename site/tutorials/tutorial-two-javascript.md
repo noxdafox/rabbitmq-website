@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -75,12 +75,16 @@ to allow arbitrary messages to be sent from the command line. This
 program will schedule tasks to our work queue, so let's name it
 `new_task.js`:
 
-<pre class="sourcecode javascript">
-var q = 'task_queue';
+<pre class="lang-javascript">
+var queue = 'task_queue';
 var msg = process.argv.slice(2).join(' ') || "Hello World!";
 
-ch.assertQueue(q, {durable: true});
-ch.sendToQueue(q, new Buffer(msg), {persistent: true});
+channel.assertQueue(queue, {
+  durable: true
+});
+channel.sendToQueue(queue, Buffer.from(msg), {
+  persistent: true
+});
 console.log(" [x] Sent '%s'", msg);
 </pre>
 
@@ -88,26 +92,37 @@ Our old _receive.js_ script also requires some changes: it needs to
 fake a second of work for every dot in the message body. It will pop
 messages from the queue and perform the task, so let's call it `worker.js`:
 
-<pre class="sourcecode javascript">
-ch.consume(q, function(msg) {
+<pre class="lang-javascript">
+var queue = 'task_queue';
+
+// This makes sure the queue is declared before attempting to consume from it
+channel.assertQueue(queue, {
+  durable: true
+});
+
+channel.consume(queue, function(msg) {
   var secs = msg.content.toString().split('.').length - 1;
 
   console.log(" [x] Received %s", msg.content.toString());
   setTimeout(function() {
     console.log(" [x] Done");
   }, secs * 1000);
-}, {noAck: true});
+}, {
+  // automatic acknowledgment mode,
+  // see ../confirms.html for details
+  noAck: true
+});
 </pre>
 
 Note that our fake task simulates execution time.
 
 Run them as in tutorial one:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 # shell 1
 ./worker.js
 </pre>
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 # shell 2
 ./new_task.js
 </pre>
@@ -125,13 +140,13 @@ will both get messages from the queue, but how exactly? Let's see.
 You need three consoles open. Two will run the `worker.js`
 script. These consoles will be our two consumers - C1 and C2.
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 # shell 1
 ./worker.js
 # => [*] Waiting for messages. To exit press CTRL+C
 </pre>
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 # shell 2
 ./worker.js
 # => [*] Waiting for messages. To exit press CTRL+C
@@ -140,7 +155,7 @@ script. These consoles will be our two consumers - C1 and C2.
 In the third one we'll publish new tasks. Once you've started
 the consumers you can publish a few messages:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 # shell 3
 ./new_task.js First message.
 ./new_task.js Second message..
@@ -151,7 +166,7 @@ the consumers you can publish a few messages:
 
 Let's see what is delivered to our workers:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 # shell 1
 ./worker.js
 # => [*] Waiting for messages. To exit press CTRL+C
@@ -160,7 +175,7 @@ Let's see what is delivered to our workers:
 # => [x] Received 'Fifth message.....'
 </pre>
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 # shell 2
 ./worker.js
 # => [*] Waiting for messages. To exit press CTRL+C
@@ -179,7 +194,7 @@ Message acknowledgment
 
 Doing a task can take a few seconds. You may wonder what happens if
 one of the consumers starts a long task and dies with it only partly done.
-With our current code, once RabbitMQ delivers a message to the customer it
+With our current code, once RabbitMQ delivers a message to the consumer it
 immediately marks it for deletion. In this case, if you kill a worker
 we will lose the message it was just processing. We'll also lose all
 the messages that were dispatched to this particular worker but were not
@@ -189,7 +204,7 @@ But we don't want to lose any tasks. If a worker dies, we'd like the
 task to be delivered to another worker.
 
 In order to make sure a message is never lost, RabbitMQ supports
-[message _acknowledgments_](/confirms.html). An ack(nowledgement) is sent back by the
+[message _acknowledgments_](../confirms.html). An ack(nowledgement) is sent back by the
 consumer to tell RabbitMQ that a particular message has been received,
 processed and that RabbitMQ is free to delete it.
 
@@ -200,34 +215,39 @@ If there are other consumers online at the same time, it will then quickly redel
 to another consumer. That way you can be sure that no message is lost,
 even if the workers occasionally die.
 
-There aren't any message timeouts; RabbitMQ will redeliver the message when
-the consumer dies. It's fine even if processing a message takes a very, very
-long time.
+A timeout (30 minutes by default) is enforced on consumer delivery acknowledgement.
+This helps detect buggy (stuck) consumers that never acknowledge deliveries.
+You can increase this timeout as described in
+[Delivery Acknowledgement Timeout](../consumers.html#acknowledgement-timeout).
 
-Message acknowledgments have been turned off in previous examples.
-It's time to turn them on using the `{noAck: false}` (you may also remove the
-options altogether) option and send a proper acknowledgment from the worker,
-once we're done with a task.
+Manual consumer acknowledgments have been turned off in previous examples.
+It's time to turn them on using the `{noAck: false}` option and send a proper acknowledgment
+from the worker, once we're done with a task.
 
-<pre class="sourcecode javascript">
-ch.consume(q, function(msg) {
+<pre class="lang-javascript">
+channel.consume(queue, function(msg) {
   var secs = msg.content.toString().split('.').length - 1;
 
   console.log(" [x] Received %s", msg.content.toString());
   setTimeout(function() {
     console.log(" [x] Done");
-    ch.ack(msg);
+    channel.ack(msg);
   }, secs * 1000);
-}, {noAck: false});
+  }, {
+    // manual acknowledgment mode,
+    // see ../confirms.html for details
+    noAck: false
+  });
 </pre>
 
 Using this code we can be sure that even if you kill a worker using
 CTRL+C while it was processing a message, nothing will be lost. Soon
 after the worker dies all unacknowledged messages will be redelivered.
 
-Acknowledgement must be sent on the same channel the delivery it is for
-was received on. Attempts to acknowledge using a different channel
-will result in a channel-level protocol exception. See the [doc guide on confirmations](/confirms.html) to learn more.
+Acknowledgement must be sent on the same channel that received the
+delivery. Attempts to acknowledge using a different channel will result
+in a channel-level protocol exception. See the [doc guide on confirmations](../confirms.html)
+to learn more.
 
 > #### Forgotten acknowledgment
 >
@@ -240,12 +260,12 @@ will result in a channel-level protocol exception. See the [doc guide on confirm
 > In order to debug this kind of mistake you can use `rabbitmqctl`
 > to print the `messages_unacknowledged` field:
 >
-> <pre class="sourcecode bash">
+> <pre class="lang-bash">
 > sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged
 > </pre>
 >
 > On Windows, drop the sudo:
-> <pre class="sourcecode bash">
+> <pre class="lang-powershell">
 > rabbitmqctl.bat list_queues name messages_ready messages_unacknowledged
 > </pre>
 
@@ -261,11 +281,11 @@ unless you tell it not to. Two things are required to make sure that
 messages aren't lost: we need to mark both the queue and messages as
 durable.
 
-First, we need to make sure that RabbitMQ will never lose our
-queue. In order to do so, we need to declare it as _durable_:
+First, we need to make sure that the queue will survive a RabbitMQ node restart.
+In order to do so, we need to declare it as _durable_:
 
-<pre class="sourcecode javascript">
-ch.assertQueue('hello', {durable: true});
+<pre class="lang-javascript">
+channel.assertQueue('hello', {durable: true});
 </pre>
 
 Although this command is correct by itself, it won't work in our present
@@ -275,8 +295,8 @@ with different parameters and will return an error to any program
 that tries to do that. But there is a quick workaround - let's declare
 a queue with different name, for example `task_queue`:
 
-<pre class="sourcecode javascript">
-ch.assertQueue('task_queue', {durable: true});
+<pre class="lang-javascript">
+channel.assertQueue('task_queue', {durable: true});
 </pre>
 
 This `durable` option change needs to be applied to both the producer
@@ -286,8 +306,8 @@ At this point we're sure that the `task_queue` queue won't be lost
 even if RabbitMQ restarts. Now we need to mark our messages as persistent
 - by using the `persistent` option `Channel.sendToQueue` takes.
 
-<pre class="sourcecode javascript">
-ch.sendToQueue(q, new Buffer(msg), {persistent: true});
+<pre class="lang-javascript">
+channel.sendToQueue(queue, Buffer.from(msg), {persistent: true});
 </pre>
 
 > #### Note on message persistence
@@ -299,7 +319,7 @@ ch.sendToQueue(q, new Buffer(msg), {persistent: true});
 > message -- it may be just saved to cache and not really written to the
 > disk. The persistence guarantees aren't strong, but it's more than enough
 > for our simple task queue. If you need a stronger guarantee then you can use
-> [publisher confirms](https://www.rabbitmq.com/confirms.html).
+> [publisher confirms](../confirms.html).
 
 
 Fair dispatch
@@ -348,8 +368,8 @@ one message to a worker at a time. Or, in other words, don't dispatch
 a new message to a worker until it has processed and acknowledged the
 previous one. Instead, it will dispatch it to the next worker that is not still busy.
 
-<pre class="sourcecode javascript">
-ch.prefetch(1);
+<pre class="lang-javascript">
+channel.prefetch(1);
 </pre>
 
 > #### Note about queue size
@@ -362,21 +382,34 @@ Putting it all together
 
 Final code of our `new_task.js` class:
 
-<pre class="sourcecode javascript">
+<pre class="lang-javascript">
 #!/usr/bin/env node
 
 var amqp = require('amqplib/callback_api');
 
-amqp.connect('amqp://localhost', function(err, conn) {
-  conn.createChannel(function(err, ch) {
-    var q = 'task_queue';
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    var queue = 'task_queue';
     var msg = process.argv.slice(2).join(' ') || "Hello World!";
 
-    ch.assertQueue(q, {durable: true});
-    ch.sendToQueue(q, new Buffer(msg), {persistent: true});
+    channel.assertQueue(queue, {
+      durable: true
+    });
+    channel.sendToQueue(queue, Buffer.from(msg), {
+      persistent: true
+    });
     console.log(" [x] Sent '%s'", msg);
   });
-  setTimeout(function() { conn.close(); process.exit(0) }, 500);
+  setTimeout(function() {
+    connection.close();
+    process.exit(0)
+  }, 500);
 });
 </pre>
 
@@ -384,27 +417,39 @@ amqp.connect('amqp://localhost', function(err, conn) {
 
 And our `worker.js`:
 
-<pre class="sourcecode javascript">
+<pre class="lang-javascript">
 #!/usr/bin/env node
 
 var amqp = require('amqplib/callback_api');
 
-amqp.connect('amqp://localhost', function(err, conn) {
-  conn.createChannel(function(err, ch) {
-    var q = 'task_queue';
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    var queue = 'task_queue';
 
-    ch.assertQueue(q, {durable: true});
-    ch.prefetch(1);
-    console.log(" [*] Waiting for messages in %s. To exit press CTRL+C", q);
-    ch.consume(q, function(msg) {
+    channel.assertQueue(queue, {
+      durable: true
+    });
+    channel.prefetch(1);
+    console.log(" [*] Waiting for messages in %s. To exit press CTRL+C", queue);
+    channel.consume(queue, function(msg) {
       var secs = msg.content.toString().split('.').length - 1;
 
       console.log(" [x] Received %s", msg.content.toString());
       setTimeout(function() {
         console.log(" [x] Done");
-        ch.ack(msg);
+        channel.ack(msg);
       }, secs * 1000);
-    }, {noAck: false});
+    }, {
+      // manual acknowledgment mode,
+      // see ../confirms.html for details
+      noAck: false
+    });
   });
 });
 </pre>
@@ -420,4 +465,3 @@ For more information on `Channel` methods and message properties, you can browse
 
 Now we can move on to [tutorial 3](tutorial-three-javascript.html) and learn how
 to deliver the same message to many consumers.
-

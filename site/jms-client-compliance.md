@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -1542,7 +1542,7 @@ The JMS for RabbitMQ client does not support server sessions.
 
 ## <a id="QueueBrowser" class="anchor" href="#QueueBrowser">QueueBrowser</a>
 
-See [QueueBrowser support](jms-client-api-guide.html#queue_browser_sup) for implementation details.
+See [QueueBrowser support](jms-client.html#queue-browser-support) for implementation details.
 
 <table>
 <colgroup>

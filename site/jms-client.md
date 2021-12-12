@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,15 +19,16 @@ limitations under the License.
 
 ## <a id="introduction" class="anchor" href="#introduction">Introduction</a>
 
-RabbitMQ JMS Client is a client library for Pivotal RabbitMQ.
-RabbitMQ is not a JMS provider but includes [a
-plugin](https://github.com/rabbitmq/rabbitmq-jms-topic-exchange)
+RabbitMQ is not a JMS provider but includes [a plugin](https://github.com/rabbitmq/rabbitmq-jms-topic-exchange)
 needed to support the JMS Queue and Topic messaging models. JMS Client
 for RabbitMQ implements the JMS 1.1 specification on top of the
 [RabbitMQ Java client](/api-guide.html), thus allowing new and
 existing JMS applications to connect to RabbitMQ.
 
 The plugin and the JMS client are meant to work and be used together.
+
+See the [RabbitMQ Java libraries support page](/java-versions.html) for the support timeline
+of the RabbitMQ JMS Client library.
 
 ## <a id="components" class="anchor" href="#components">Components</a>
 
@@ -98,7 +99,7 @@ plugin, you need to enable the plugin in order to use it.
 
 Enable the plugin using the `rabbitmq-plugins` command:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmq-plugins enable rabbitmq_jms_topic_exchange
 </pre>
 
@@ -125,7 +126,7 @@ framework like Spring.
 
 To define the JMS `ConnectionFactory` in JNDI, e.g. in Tomcat:
 
-<pre class="sourcecode xml">
+<pre class="lang-xml">
 &lt;Resource name="jms/ConnectionFactory"
             type="javax.jms.ConnectionFactory"
          factory="com.rabbitmq.jms.admin.RMQObjectFactory"
@@ -138,7 +139,7 @@ To define the JMS `ConnectionFactory` in JNDI, e.g. in Tomcat:
 
 To define the JMS `ConnectionFactory` in JNDI, e.g. in WildFly (as of JMS Client 1.7.0):
 
-<pre class="sourcecode xml">
+<pre class="lang-xml">
 &lt;object-factory name=&quot;java:global/jms/ConnectionFactory&quot;
                    module=&quot;org.jboss.genericjms.provider&quot;
                    class=&quot;com.rabbitmq.jms.admin.RMQObjectFactory&quot;&gt;
@@ -155,7 +156,7 @@ To define the JMS `ConnectionFactory` in JNDI, e.g. in WildFly (as of JMS Client
 
 Here is the equivalent Spring bean example (Java configuration):
 
-<pre class="sourcecode java">
+<pre class="lang-java">
 @Bean
 public ConnectionFactory jmsConnectionFactory() {
   RMQConnectionFactory connectionFactory = new RMQConnectionFactory();
@@ -170,13 +171,13 @@ public ConnectionFactory jmsConnectionFactory() {
 
 And here is the Spring XML configuration:
 
-<pre class="sourcecode xml">
+<pre class="lang-xml">
 &lt;bean id="jmsConnectionFactory" class="com.rabbitmq.jms.admin.RMQConnectionFactory" &gt;
   &lt;property name="username" value="guest" /&gt;
   &lt;property name="password" value="guest" /&gt;
   &lt;property name="virtualHost" value="/" /&gt;
   &lt;property name="host" value="localhost" /&gt;
-  &lt;property name="port" value="5672" /&gt;      
+  &lt;property name="port" value="5672" /&gt;
 &lt;/bean&gt;
 </pre>
 
@@ -245,7 +246,7 @@ The `com.rabbitmq.jms.admin` package contains the `RMQDestination` class,
 which implements `Destination` in the JMS interface. This is extended
 with a new constructor:
 
-<pre class="sourcecode java">
+<pre class="lang-java">
     public RMQDestination(String destinationName, String amqpExchangeName,
                           String amqpRoutingKey, String amqpQueueName);
 </pre>
@@ -281,7 +282,7 @@ There are getters and setters for these fields, which means that a JNDI
  `<Resource/>` definition or an XML Spring bean definition can use them, for example
  JNDI with Tomcat:
 
-<pre class="sourcecode xml">
+<pre class="lang-xml">
     &lt;Resource  name="jms/Queue"
                type="javax.jms.Queue"
             factory="com.rabbitmq.jms.admin.RMQObjectFactory"
@@ -293,7 +294,7 @@ There are getters and setters for these fields, which means that a JNDI
 
 This is the equivalent with WildFly (as of JMS Client 1.7.0):
 
-<pre class="sourcecode xml">
+<pre class="lang-xml">
 &lt;bindings&gt;
     &lt;object-factory name="java:global/jms/Queue"
                     module="foo.bar"
@@ -310,7 +311,7 @@ This is the equivalent with WildFly (as of JMS Client 1.7.0):
 
 This is the equivalent Spring bean example (Java configuration):
 
-<pre class="sourcecode java">
+<pre class="lang-java">
     @Bean
     public Destination jmsDestination() {
         RMQDestination jmsDestination = new RMQDestination();
@@ -323,7 +324,7 @@ This is the equivalent Spring bean example (Java configuration):
 
 And here is the Spring XML configuration:
 
-<pre class="sourcecode xml">
+<pre class="lang-xml">
     &lt;bean id="jmsDestination" class="com.rabbitmq.jms.admin.RMQDestination" &gt;
      &lt;property name="destinationName" value="myQueue" /&gt;
      &lt;property name="amqp"            value="true" /&gt;
@@ -368,7 +369,7 @@ add the following JARs to the classpath:
 We highly recommend to use a dependency management tool like [Maven](http://maven.apache.org/)
 or [Gradle](https://gradle.org/) to manage dependencies.
 
-The SLF4J API is backwards compatible, so you can use use any version of
+The SLF4J API is backwards compatible, so you can use any version of
 SLF4J. Version 1.7.5 or higher is recommended. The SLF4J API and
 bindings, however, must be from the same SLF4J version.
 
@@ -377,6 +378,31 @@ binding JAR files are in the classpath. However, the target framework
 may have configuration files or command-line options.
 Refer to the documentation for the target logging framework
 for configuration details.
+
+## <a id="publisher-confirms" class="anchor" href="#publisher-confirms">Publisher Confirms</a>
+
+[Publisher confirms](/confirms.html#publisher-confirms) are a RabbitMQ extension to implement reliable
+publishing. This feature builds on top of the AMQP protocol, but the JMS client
+provides an API to use it. This allows to benefit from a reliability feature without
+diverging too much from the JMS API.
+
+Publisher confirms are disabled by default. They can be enabled by setting
+a `ConfirmListener` on the `RMQConnectionFactory`:
+
+<pre class="lang-java">
+RMQConnectionFactory connectionFactory = new RMQConnectionFactory();
+connectionFactory.setConfirmListener(context -> {
+    context.getMessage(); // the message that is confirmed/nack-ed
+    context.isAck(); // whether the message is confirmed or nack-ed
+});
+</pre>
+
+Note the `ConfirmListener` is not a good place to execute long-running
+tasks. Those should be executed in a dedicated thread, using e.g. an `ExecutorService`.
+
+Typical operations in a `ConfirmListener` are logging or message re-publishing (in case
+of nacks). The [publish confirms tutorial](/tutorials/tutorial-seven-java.html) provides more guidance. It aims for the
+AMQP Java client, but principles remain the same for the JMS client.
 
 ## <a id="rpc-support" class="anchor" href="#rpc-support">Support for Request/Reply (a.k.a. RPC)</a>
 
@@ -387,7 +413,7 @@ This pattern is commonly known as *Remote Procedure Call* or *RPC*.
 
 An RPC client can be implemented in pure JMS like the following:
 
-<pre class="sourcecode java">
+<pre class="lang-java">
 Message request = ... // create the request message
 // set up reply-to queue and start listening on it
 Destination replyQueue = session.createTemporaryQueue();
@@ -421,7 +447,7 @@ by default).
 
 The server part looks like the following:
 
-<pre class="sourcecode java">
+<pre class="lang-java">
 // this is necessary when using temporary reply-to destinations
 connectionFactory.setDeclareReplyToDestination(false);
 ...
@@ -453,7 +479,7 @@ for a full RPC example.
 The JMS client also supports [direct reply-to](direct-reply-to.html), which is faster as it doesn't imply
 creating a temporary reply destination:
 
-<pre class="sourcecode java">
+<pre class="lang-java">
 Message request = ...
 // use direct reply-to
 RMQDestination replyQueue = new RMQDestination(
@@ -491,7 +517,7 @@ is a popular way to work with JMS as it avoids most of JMS boilerplate.
 The following sample shows how a client can perform RPC with the
 `JmsTemplate`:
 
-<pre class="sourcecode java">
+<pre class="lang-java">
 // NB: do not create a new JmsTemplate for each request
 JmsTemplate tpl = new JmsTemplate(connectionFactory);
 tpl.setReceiveTimeout(5000);
@@ -511,7 +537,7 @@ RPC with direct reply-to
 must be implemented with a `SessionCallback`, as the reply destination
 must be explicitly declared:
 
-<pre class="sourcecode java">
+<pre class="lang-java">
 // NB: do not create a new JmsTemplate for each request
 JmsTemplate tpl = new JmsTemplate(connectionFactory);
 Message response = tpl.execute(session -> {
@@ -520,7 +546,7 @@ Message response = tpl.execute(session -> {
     RMQDestination replyQueue = new RMQDestination(
         "amq.rabbitmq.reply-to", "", "amq.rabbitmq.reply-to", "amq.rabbitmq.reply-to"
     );
-    replyQueue.setDeclared(true); // don't need to create this destination
+    replyQueue.setDeclared(true); // no need to create this destination
     message.setJMSReplyTo(replyQueue);
     MessageConsumer responseConsumer = session.createConsumer(replyQueue);
     BlockingQueue&lt;Message&gt; queue = new ArrayBlockingQueue&lt;&gt;(1);
@@ -530,7 +556,7 @@ Message response = tpl.execute(session -> {
     producer.send(message);
     try {
         // wait response for 5 seconds
-        Message response = queue.poll(2, TimeUnit.SECONDS);
+        Message response = queue.poll(5, TimeUnit.SECONDS);
         // close the response consumer
         responseConsumer.close();
         return response;
@@ -554,7 +580,7 @@ acknowledgement behaviours.
 
 ## <a id="jms_topic_support"></a>JMS Topic Support
 
-JMS topics are implemented using an AMQP [topic exchange](tutorials/amqp-concepts.html#exchange-topic)
+JMS topics are implemented using an AMQP [topic exchange](/tutorials/amqp-concepts.html#exchange-topic)
 and a dedicated AMQP queue for each JMS topic subscriber. The AMQP
 topic exchange is `jms.temp.topic` or `jms.durable.topic`, depending
 on whether the JMS topic is temporary or not, respectively. Let's
@@ -588,7 +614,7 @@ Exchanges can be bound together thanks to a [RabbitMQ extension](e2e.html).
 Note the [topic selector plugin](#plugin) must be enabled for topic selectors
 to work.
 
-## <a id="queue_browser_support"></a>QueueBrowser Support
+## <a id="queue-browser-support" class="anchor" href="#queue-browser-support">QueueBrowser Support</a>
 
 ### Overview of queue browsers
 
@@ -741,6 +767,6 @@ normal case, when the message is an instance of
 
 To gain better understanding of AMQP 0-9-1 concepts and interoperability of
 the RabbitMQ JMS client with AMQP 0-9-1 clients, you may wish to read an
-[Introduction to RabbitMQ Concepts](tutorials/amqp-concepts.html)
+[Introduction to RabbitMQ Concepts](/tutorials/amqp-concepts.html)
 and browse our
 [AMQP 0-9-1 Quick Reference Guide](amqp-0-9-1-quickref.html).

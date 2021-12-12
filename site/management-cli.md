@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,18 +31,13 @@ HTTP API intentionally doesn't expose certain operations.
 
 ## Obtaining `rabbitmqadmin`
 
-With the management plugin installed, browse to
-`http://{hostname}:15672/cli/rabbitmqadmin`
-to download. The tool supports
+`rabbitmqadmin` can be downloaded from any RabbitMQ node that has
+the management plugin enabled. Navigate to `http://{hostname}:15672/cli/rabbitmqadmin` to download it.
+The tool requires a supported version of Python to be installed.
 
- * Python `3.x`
- * Python `2.6` or later for HTTP connections
- * Python `2.7.9` or later for HTTPS connections
-
-
-Alternatively, you can download the version of rabbitmqadmin which
+Alternatively, the version of `rabbitmqadmin` which
 corresponds with the management plugin version &version-server;
-[from GitHub](https://raw.githubusercontent.com/rabbitmq/rabbitmq-management/&version-server-tag;/bin/rabbitmqadmin).
+can be downloaded [from GitHub](https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/&version-server-tag;/deps/rabbitmq_management/bin/rabbitmqadmin).
 
 
 ## Getting Started
@@ -86,7 +81,7 @@ On Debian-derived
 systems, copy the file to `/etc/bash_completion.d` to make it
 available system-wide:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 sudo sh -c 'rabbitmqadmin --bash-completion > /etc/bash_completion.d/rabbitmqadmin'
 </pre>
 
@@ -94,7 +89,7 @@ sudo sh -c 'rabbitmqadmin --bash-completion > /etc/bash_completion.d/rabbitmqadm
 
 ### Get a list of exchanges
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin -V test list exchanges
 # => +-------------+---------+-------+---------+-------------+
 # => |    name     | durable | vhost |  type   | auto_delete |
@@ -110,7 +105,7 @@ rabbitmqadmin -V test list exchanges
 
 ### Get a list of queues, with some columns specified
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin list queues vhost name node messages message_stats.publish_details.rate
 # => +-------+----------------------------------+-------------------+----------+------------------------------------+
 # => | vhost |               name               |       node        | messages | message_stats.publish_details.rate |
@@ -122,10 +117,10 @@ rabbitmqadmin list queues vhost name node messages message_stats.publish_details
 
 ### Get a list of queues, with all the detail we can take
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin -f long -d 3 list queues
 # =>     --------------------------------------------------------------------------------
-# => 
+# =>
 # =>                                            vhost: /
 # =>                                             name: amq.gen-UELtxwb8OGJ9XHlHJq0Jug==
 # =>                                      auto_delete: False
@@ -137,7 +132,7 @@ rabbitmqadmin -f long -d 3 list queues
 
 ### Connect to another host as another user
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin -H myserver -u simon -p simon list vhosts
 # => +------+
 # => | name |
@@ -148,29 +143,29 @@ rabbitmqadmin -H myserver -u simon -p simon list vhosts
 
 ### Declare an exchange
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin declare exchange name=my-new-exchange type=fanout
 # => exchange declared
 </pre>
 
 ### Declare a queue, with optional parameters
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin declare queue name=my-new-queue durable=false
 # => queue declared
 </pre>
 
 ### Publish a message
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin publish exchange=amq.default routing_key=test payload="hello, world"
 # => Message published
 </pre>
 
 ### And get it back
 
-<pre class="sourcecode bash">
-rabbitmqadmin get queue=test requeue=false
+<pre class="lang-bash">
+rabbitmqadmin get queue=test ackmode=ack_requeue_false
 # => +-------------+----------+---------------+--------------+------------------+-------------+
 # => | routing_key | exchange | message_count |   payload    | payload_encoding | redelivered |
 # => +-------------+----------+---------------+--------------+------------------+-------------+
@@ -180,19 +175,19 @@ rabbitmqadmin get queue=test requeue=false
 
 ### Export Configuration (Definitions)
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin export rabbit.definitions.json
 # => Exported configuration for localhost to "rabbit.config"
 </pre>
 
 ### Import Configuration (Definitions), quietly
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin -q import rabbit.definitions.json
 </pre>
 
 ### Close all connections
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 rabbitmqadmin -f tsv -q list connections name | while read conn ; do rabbitmqadmin -q close connection name="${conn}" ; done
 </pre>

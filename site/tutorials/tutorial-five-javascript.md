@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
-are made available under the terms of the under the Apache License, 
-Version 2.0 (the "License”); you may not use this file except in compliance 
+are made available under the terms of the under the Apache License,
+Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -156,30 +156,41 @@ The code is almost the same as in the
 
 The code for `emit_log_topic.js`:
 
-<pre class="sourcecode javascript">
+<pre class="lang-javascript">
 #!/usr/bin/env node
 
 var amqp = require('amqplib/callback_api');
 
-amqp.connect('amqp://localhost', function(err, conn) {
-  conn.createChannel(function(err, ch) {
-    var ex = 'topic_logs';
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    var exchange = 'topic_logs';
     var args = process.argv.slice(2);
     var key = (args.length > 0) ? args[0] : 'anonymous.info';
     var msg = args.slice(1).join(' ') || 'Hello World!';
 
-    ch.assertExchange(ex, 'topic', {durable: false});
-    ch.publish(ex, key, new Buffer(msg));
+    channel.assertExchange(exchange, 'topic', {
+      durable: false
+    });
+    channel.publish(exchange, key, Buffer.from(msg));
     console.log(" [x] Sent %s:'%s'", key, msg);
   });
 
-  setTimeout(function() { conn.close(); process.exit(0) }, 500);
+  setTimeout(function() {
+    connection.close();
+    process.exit(0)
+  }, 500);
 });
 </pre>
 
 The code for `receive_logs_topic.js`:
 
-<pre class="sourcecode javascript">
+<pre class="lang-javascript">
 #!/usr/bin/env node
 
 var amqp = require('amqplib/callback_api');
@@ -191,22 +202,37 @@ if (args.length == 0) {
   process.exit(1);
 }
 
-amqp.connect('amqp://localhost', function(err, conn) {
-  conn.createChannel(function(err, ch) {
-    var ex = 'topic_logs';
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    var exchange = 'topic_logs';
 
-    ch.assertExchange(ex, 'topic', {durable: false});
+    channel.assertExchange(exchange, 'topic', {
+      durable: false
+    });
 
-    ch.assertQueue('', {exclusive: true}, function(err, q) {
+    channel.assertQueue('', {
+      exclusive: true
+    }, function(error2, q) {
+      if (error2) {
+        throw error2;
+      }
       console.log(' [*] Waiting for logs. To exit press CTRL+C');
 
       args.forEach(function(key) {
-        ch.bindQueue(q.queue, ex, key);
+        channel.bindQueue(q.queue, exchange, key);
       });
 
-      ch.consume(q.queue, function(msg) {
+      channel.consume(q.queue, function(msg) {
         console.log(" [x] %s:'%s'", msg.fields.routingKey, msg.content.toString());
-      }, {noAck: true});
+      }, {
+        noAck: true
+      });
     });
   });
 });
@@ -214,31 +240,31 @@ amqp.connect('amqp://localhost', function(err, conn) {
 
 To receive all the logs:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ./receive_logs_topic.js "#"
 </pre>
 
 To receive all logs from the facility "`kern`":
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ./receive_logs_topic.js "kern.*"
 </pre>
 
 Or if you want to hear only about "`critical`" logs:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ./receive_logs_topic.js "*.critical"
 </pre>
 
 You can create multiple bindings:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ./receive_logs_topic.js "kern.*" "*.critical"
 </pre>
 
 And to emit a log with a routing key "`kern.critical`" type:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ./emit_log_topic.js "kern.critical" "A critical kernel error"
 </pre>
 

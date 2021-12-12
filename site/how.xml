@@ -4,14 +4,14 @@
 %entities;
 ]>
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
-are made available under the terms of the under the Apache License, 
-Version 2.0 (the "License”); you may not use this file except in compliance 
+are made available under the terms of the under the Apache License,
+Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:doc="http://www.rabbitmq.com/namespaces/ad-hoc/doc">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:doc="https://www.rabbitmq.com/namespaces/ad-hoc/doc">
   <head>
     <title>How To</title>
   </head>
@@ -161,12 +161,12 @@ limitations under the License.
       <doc:heading>Cloud Configurations</doc:heading>
       <ul>
         <li><a href="http://skillsmatter.com/podcast/cloud-grid/use-cases-for-cloud-messaging/rl-311">Cloud Messaging Use Cases</a><br/>
-          Alexis' presention on use cases for cloud messaging at the Cloud and Grid Exchange 2010. The talk discusses what is messaging
+          Alexis' presentation on use cases for cloud messaging at the Cloud and Grid Exchange 2010. The talk discusses what is messaging
           and why it is useful for cloud computing by way of illustrating use cases from RabbitMQ customers. (Download a
           <a href="/resources/SkillsMatterCloudAndGridExchange2010RabbitMQCloudMessagingUseCases.pdf">PDF of the slides</a>, 3.2MB).
     </li>
     <li>
-    <a href="http://helenaedelson.com/?p=685">Why RabbitMQ for Cloud?</a><br/>
+    <a href="https://web.archive.org/web/20170115215106/http://helenaedelson.com/?p=685">Why RabbitMQ for Cloud?</a><br/>
     Holly Edelson explains why RabbitMQ is ideal for implementing a cloud messaging solution.
   </li>
   <li>
@@ -178,13 +178,13 @@ limitations under the License.
     Describes how it is possible to leverage the cloud and RabbitMQ to scale-out a massive PDF generation task.
     </li>
     <li><a href="http://notes.variogr.am/post/67710296/replacing-amazon-sqs-with-something-faster-and-cheaper">Replacing Amazon SQS with something faster and cheaper</a><br/>
-    Illustrates the use of RabbitMQ as a alternative to SQS for message queuing on AWS.
+    Illustrates the use of RabbitMQ as an alternative to SQS for message queuing on AWS.
     </li>
     <li><a href="http://www.equivalence.co.uk/archives/1521">Idiot's Guide to Linux on Amazon EC2</a><br/>
     Walk through of how to set up Ubuntu for use with RabbitMQ on AWS.
     </li>
     <li>
-    <a href="http://www.rabbitmq.com/ec2.html">Run RabbitMQ on EC2</a><br/>
+    <a href="https://www.rabbitmq.com/ec2.html">Run RabbitMQ on EC2</a><br/>
     Describes how to get started with RabbitMQ on Amazon's EC2.
     </li>
     <li>
@@ -226,11 +226,6 @@ limitations under the License.
         <li>
           <a href="https://forge.puppet.com/puppet/rabbitmq">Puppet Module</a><br />
           A module for managing RabbitMQ with Puppet.
-        </li>
-        <li>
-          <a href="http://del.icio.us/alexisrichardson/rabbitmq+management">RabbitMQ Management</a> and
-          <a href="http://del.icio.us/alexisrichardson/rabbitmq+monitoring">RabbitMQ Monitoring</a> on del.icio.us<br />
-          More links to what others are doing to manage and monitor RabbitMQ.
         </li>
       </ul>
     </doc:section>
@@ -381,14 +376,14 @@ limitations under the License.
     </li>
     <li>
       <a href="http://www.erlang-factory.com/conference/SFBay2011/speakers/JamesAimonetti">Powerful, Open Source, VoIP Cloud Services</a><br />
-      James Aimonetti describes a open-source product that automatically deploys, scales and distributes
+      James Aimonetti describes an open-source product that automatically deploys, scales and distributes
       VoIP calls across the Internet on commodity or virtualized servers. It fully utilizes Erlang for VoIP
       logic and on other Erlang products like CouchDB and RabbitMQ.
     </li>
     <li>
       <a href="http://about.digg.com/blog/how-digg-is-built">How Digg is Built</a><br />
       Dave Beckett describes how Digg, a social news and content sharing website, rebuilt their infrastructure. Digg use RabbitMQ
-      to bridge their on-line applications and asynchround backend systems, queuing up events that have happened and jobs to perform.
+      to bridge their on-line applications and asynchronous backend systems, queuing up events that have happened and jobs to perform.
     </li>
     <li>
       <a href="http://blog.james-carr.org/2010/09/09/rabbitmq-nodejs-and-java-goodness/">RabbitMQ, node.js and Java</a><br />
@@ -498,7 +493,7 @@ limitations under the License.
     </li>
     <li>
       <a href="http://bunnyamqp.wordpress.com/">Of Bunny and AMQP</a><br />
-      The blog of Chris Duncan, author the the Bunny AMQP client for Ruby. Good place
+      The blog of Chris Duncan, author of the Bunny AMQP client for Ruby. Good place
       to look if you're using AMQP with Ruby.
     </li>
     <li>
@@ -567,7 +562,7 @@ limitations under the License.
     <li>
       <a href="http://hpts.ws/papers/2009/session5/das.pdf">Advanced Message Queueing Protocol</a><br />
       Presentation from Pranta Das from Cisco giving a good background on AMQP, an
-      overview of the the new information model in AMQP 1.0 and some general use
+      overview of the new information model in AMQP 1.0 and some general use
       cases for AMQP messaging.
     </li>
     <li>

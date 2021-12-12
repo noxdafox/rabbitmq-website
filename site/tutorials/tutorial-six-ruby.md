@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,7 +41,7 @@ To illustrate how an RPC service could be used we're going to
 create a simple client class. It's going to expose a method named `call`
 which sends an RPC request and blocks until the answer is received:
 
-<pre class="sourcecode ruby">
+<pre class="lang-ruby">
 client = FibonacciClient.new('rpc_queue')
 
 puts ' [x] Requesting fib(30)'
@@ -79,7 +79,7 @@ receive a response we need to send a 'callback' queue address with the
 request. We can use the default queue.
 Let's try it:
 
-<pre class="sourcecode ruby">
+<pre class="lang-ruby">
 queue = channel.queue('', exclusive: true)
 exchange = channel.default_exchange
 
@@ -208,7 +208,7 @@ Putting it all together
 
 The Fibonacci task:
 
-<pre class="sourcecode ruby">
+<pre class="lang-ruby">
 def fibonacci(value)
   return value if value.zero? || value == 1
 
@@ -223,7 +223,7 @@ and it's probably the slowest recursive implementation possible).
 
 The code for our RPC server [rpc_server.rb](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/ruby/rpc_server.rb) looks like this:
 
-<pre class="sourcecode ruby">
+<pre class="lang-ruby">
 #!/usr/bin/env ruby
 require 'bunny'
 
@@ -245,12 +245,18 @@ class FibonacciServer
     connection.close
   end
 
+  def loop_forever
+    # This loop only exists to keep the main thread
+    # alive. Many real world apps won't need this.
+    loop { sleep 5 }
+  end
+
   private
 
   attr_reader :channel, :exchange, :queue, :connection
 
   def subscribe_to_queue
-    queue.subscribe(block: true) do |_delivery_info, properties, payload|
+    queue.subscribe do |_delivery_info, properties, payload|
       result = fibonacci(payload.to_i)
 
       exchange.publish(
@@ -273,6 +279,7 @@ begin
 
   puts ' [x] Awaiting RPC requests'
   server.start('rpc_queue')
+  server.loop_forever
 rescue Interrupt => _
   server.stop
 end
@@ -287,13 +294,13 @@ The server code is rather straightforward:
   * We might want to run more than one server process. In order
     to spread the load equally over multiple servers we need to set the
     `prefetch` setting on channel.
-  * We use `Bunny::Queue#subscribe` to consume messages from the queue. Then we enter the while loop in which
-    we wait for request messages, do the work and send the response back.
+  * We use `Bunny::Queue#subscribe` to consume messages from the queue.
+    The consumer will wait for deliveries to be pushed to it, do the work and send the response back.
 
 
 The code for our RPC client [rpc_client.rb](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/ruby/rpc_client.rb):
 
-<pre class="sourcecode ruby">
+<pre class="lang-ruby">
 #!/usr/bin/env ruby
 require 'bunny'
 require 'thread'
@@ -373,14 +380,14 @@ Now is a good time to take a look at our full example source code (which include
 
 Our RPC service is now ready. We can start the server:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ruby rpc_server.rb
 # => [x] Awaiting RPC requests
 </pre>
 
 To request a fibonacci number run the client:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ruby rpc_client.rb
 # => [x] Requesting fib(30)
 </pre>

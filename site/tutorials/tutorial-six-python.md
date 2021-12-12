@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,7 @@ limitations under the License.
 ### Prerequisites
 
 As with other Python tutorials, we will use the [Pika](https://pypi.python.org/pypi/pika) RabbitMQ client
-[version 0.11.0](https://pika.readthedocs.io/en/0.11.0/).
+[version 1.0.0](https://pika.readthedocs.io/en/stable/).
 
 ### What This Tutorial Focuses On
 
@@ -47,7 +47,7 @@ To illustrate how an RPC service could be used we're going to
 create a simple client class. It's going to expose a method named `call`
 which sends an RPC request and blocks until the answer is received:
 
-<pre class="sourcecode python">
+<pre class="lang-python">
 fibonacci_rpc = FibonacciRpcClient()
 result = fibonacci_rpc.call(4)
 print("fib(4) is %r" % result)
@@ -81,8 +81,8 @@ message and a server replies with a response message. In order to
 receive a response the client needs to send a 'callback' queue address with the
 request. Let's try it:
 
-<pre class="sourcecode python">
-result = channel.queue_declare(exclusive=True)
+<pre class="lang-python">
+result = channel.queue_declare(queue='', exclusive=True)
 callback_queue = result.method.queue
 
 channel.basic_publish(exchange='',
@@ -214,14 +214,14 @@ Our RPC will work like this:
 Putting it all together
 -----------------------
 
+`rpc_server.py` ([source](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/python/rpc_server.py))
 
-The code for `rpc_server.py`:
-
-<pre class="sourcecode python">
+<pre class="lang-python">
 #!/usr/bin/env python
 import pika
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+connection = pika.BlockingConnection(
+    pika.ConnectionParameters(host='localhost'))
 
 channel = connection.channel()
 
@@ -233,7 +233,7 @@ def fib(n):
     elif n == 1:
         return 1
     else:
-        return fib(n-1) + fib(n-2)
+        return fib(n - 1) + fib(n - 2)
 
 def on_request(ch, method, props, body):
     n = int(body)
@@ -246,10 +246,10 @@ def on_request(ch, method, props, body):
                      properties=pika.BasicProperties(correlation_id = \
                                                          props.correlation_id),
                      body=str(response))
-    ch.basic_ack(delivery_tag = method.delivery_tag)
+    ch.basic_ack(delivery_tag=method.delivery_tag)
 
 channel.basic_qos(prefetch_count=1)
-channel.basic_consume(on_request, queue='rpc_queue')
+channel.basic_consume(queue='rpc_queue', on_message_callback=on_request)
 
 print(" [x] Awaiting RPC requests")
 channel.start_consuming()
@@ -257,37 +257,42 @@ channel.start_consuming()
 
 The server code is rather straightforward:
 
-  * (4) As usual we start by establishing the connection and declaring
-    the queue.
-  * (11) We declare our fibonacci function. It assumes only valid positive integer input.
+  * As usual we start by establishing the connection and declaring
+    the queue `rpc_queue`.
+  * We declare our fibonacci function. It assumes only valid positive integer input.
     (Don't expect this one to work for big numbers,
     it's probably the slowest recursive implementation possible).
-  * (19) We declare a callback for `basic_consume`,
+  * We declare a callback `on_request` for `basic_consume`,
     the core of the RPC server. It's executed when the request
     is received. It does the work and sends the response back.
-  * (32) We might want to run more than one server process. In order
+  * We might want to run more than one server process. In order
     to spread the load equally over multiple servers we need to set the
     `prefetch_count` setting.
 
 
-The code for `rpc_client.py`:
+`rpc_client.py` ([source](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/python/rpc_client.py))
 
-<pre class="sourcecode python">
+<pre class="lang-python">
 #!/usr/bin/env python
 import pika
 import uuid
 
+
 class FibonacciRpcClient(object):
+
     def __init__(self):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host='localhost'))
 
         self.channel = self.connection.channel()
 
-        result = self.channel.queue_declare(exclusive=True)
+        result = self.channel.queue_declare(queue='', exclusive=True)
         self.callback_queue = result.method.queue
 
-        self.channel.basic_consume(self.on_response, no_ack=True,
-                                   queue=self.callback_queue)
+        self.channel.basic_consume(
+            queue=self.callback_queue,
+            on_message_callback=self.on_response,
+            auto_ack=True)
 
     def on_response(self, ch, method, props, body):
         if self.corr_id == props.correlation_id:
@@ -296,16 +301,18 @@ class FibonacciRpcClient(object):
     def call(self, n):
         self.response = None
         self.corr_id = str(uuid.uuid4())
-        self.channel.basic_publish(exchange='',
-                                   routing_key='rpc_queue',
-                                   properties=pika.BasicProperties(
-                                         reply_to = self.callback_queue,
-                                         correlation_id = self.corr_id,
-                                         ),
-                                   body=str(n))
+        self.channel.basic_publish(
+            exchange='',
+            routing_key='rpc_queue',
+            properties=pika.BasicProperties(
+                reply_to=self.callback_queue,
+                correlation_id=self.corr_id,
+            ),
+            body=str(n))
         while self.response is None:
             self.connection.process_data_events()
         return int(self.response)
+
 
 fibonacci_rpc = FibonacciRpcClient()
 
@@ -316,35 +323,34 @@ print(" [.] Got %r" % response)
 
 The client code is slightly more involved:
 
-  * (7) We establish a connection, channel and declare an
-    exclusive 'callback' queue for replies.
-  * (16) We subscribe to the 'callback' queue, so that
+  * We establish a connection, channel and declare an
+    exclusive `callback_queue` for replies.
+  * We subscribe to the `callback_queue`, so that
     we can receive RPC responses.
-  * (18) The 'on_response' callback executed on every response is
+  * The `on_response` callback that got executed on every response is
     doing a very simple job, for every response message it checks if
     the `correlation_id` is the one we're looking for. If so, it saves
     the response in `self.response` and breaks the consuming loop.
-  * (23) Next, we define our main `call` method - it does the actual
+  * Next, we define our main `call` method - it does the actual
     RPC request.
-  * (24) In this method, first we generate a unique `correlation_id`
-    number and save it - the 'on_response' callback function will
+  * In `call` method, we generate a unique `correlation_id`
+    number and save it - the `on_response` callback function will
     use this value to catch the appropriate response.
-  * (25) Next, we publish the request message, with two properties:
+  * Also in `call` method, we publish the request message, with two properties:
     `reply_to` and `correlation_id`.
-  * (32) At this point we can sit back and wait until the proper
-    response arrives.
-  * (33) And finally we return the response back to the user.
+  * At the end we wait until the proper response
+    arrives and return the response back to the user.
 
 Our RPC service is now ready. We can start the server:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 python rpc_server.py
 # => [x] Awaiting RPC requests
 </pre>
 
 To request a fibonacci number run the client:
 
-<pre class="sourcecode python">
+<pre class="lang-python">
 python rpc_client.py
 # => [x] Requesting fib(30)
 </pre>
@@ -372,5 +378,3 @@ complex (but important) problems, like:
 >
 >If you want to experiment, you may find the [management UI](/management.html) useful for viewing the queues.
 >
-
-(Full source code for [rpc_client.py](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/python/rpc_client.py) and [rpc_server.py](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/python/rpc_server.py))

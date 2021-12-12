@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
-Copyright (c) 2007-2016 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
-are made available under the terms of the under the Apache License, 
-Version 2.0 (the "License”); you may not use this file except in compliance 
+are made available under the terms of the under the Apache License,
+Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,8 +20,8 @@ limitations under the License.
                 xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
                 xmlns:atom="http://www.w3.org/2005/Atom"
                 xmlns:dc="http://purl.org/dc/elements/1.1/"
-                xmlns:doc="http://www.rabbitmq.com/namespaces/ad-hoc/doc"
-                xmlns:x="http://www.rabbitmq.com/2011/extensions"
+                xmlns:doc="https://www.rabbitmq.com/namespaces/ad-hoc/doc"
+                xmlns:x="https://www.rabbitmq.com/2011/extensions"
                 xmlns="http://www.w3.org/1999/xhtml"
                 exclude-result-prefixes="rss1 rdf atom dc x"
                 >
@@ -40,7 +40,7 @@ limitations under the License.
     <x:month>Nov</x:month>
     <x:month>Dec</x:month>
   </x:months>
-  
+
   <xsl:template match="doc:homefeed">
     <xsl:apply-templates select="document(@src)/*">
       <xsl:with-param name="type">

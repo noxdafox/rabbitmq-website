@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -61,9 +61,9 @@ on behalf of the consumer.
 
 ### Setup
 
-First lets verify that you have .NET Core toolchain in `PATH`:
+First let's verify that you have .NET Core toolchain in `PATH`:
 
-<pre class="sourcecode powershell">
+<pre class="lang-powershell">
 dotnet --help
 </pre>
 
@@ -71,7 +71,7 @@ should produce a help message.
 
 Now let's generate two projects, one for the publisher and one for the consumer:
 
-<pre class="sourcecode powershell">
+<pre class="lang-powershell">
 dotnet new console --name Send
 mv Send/Program.cs Send/Send.cs
 dotnet new console --name Receive
@@ -82,7 +82,7 @@ This will create two new directories named `Send` and `Receive`.
 
 Then we add the client dependency.
 
-<pre class="sourcecode ps">
+<pre class="lang-powershell">
 cd Send
 dotnet add package RabbitMQ.Client
 dotnet restore
@@ -107,7 +107,7 @@ In
 [`Send.cs`](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/dotnet/Send/Send.cs),
 we need to use some namespaces:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 using System;
 using RabbitMQ.Client;
 using System.Text;
@@ -115,7 +115,7 @@ using System.Text;
 
 Set up the class:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 class Send
 {
     public static void Main()
@@ -127,18 +127,16 @@ class Send
 
 then we can create a connection to the server:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 class Send
 {
     public static void Main()
     {
         var factory = new ConnectionFactory() { HostName = "localhost" };
         using (var connection = factory.CreateConnection())
+        using (var channel = connection.CreateModel())
         {
-            using (var channel = connection.CreateModel())
-            {
-                ...
-            }
+            ...
         }
     }
 }
@@ -146,9 +144,9 @@ class Send
 
 The connection abstracts the socket connection, and takes care of
 protocol version negotiation and authentication and so on for us. Here
-we connect to a broker on the local machine - hence the
-_localhost_. If we wanted to connect to a broker on a different
-machine we'd simply specify its name or IP address here.
+we connect to a RabbitMQ node on the local machine - hence the
+_localhost_. If we wanted to connect to a node on a different
+machine we'd simply specify its hostname or IP address here.
 
 Next we create a channel, which is where most of the API for getting
 things done resides.
@@ -156,7 +154,7 @@ things done resides.
 To send, we must declare a queue for us to send to; then we can publish a message
 to the queue:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 using System;
 using RabbitMQ.Client;
 using System.Text;
@@ -209,13 +207,13 @@ class](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/dotnet/Send/Se
 > (by default it needs at least 50 MB free) and is therefore refusing to
 > accept messages. Check the broker logfile to confirm and reduce the
 > limit if necessary. The <a
-> href="http://www.rabbitmq.com/configure.html#config-items">configuration
+> href="https://www.rabbitmq.com/configure.html#config-items">configuration
 > file documentation</a> will show you how to set <code>disk_free_limit</code>.
 
 
 ### Receiving
 
-As for the consumer, it is pushed messages from
+As for the consumer, it is listening for messages from
 RabbitMQ. So unlike the publisher which publishes a single message, we'll
 keep the consumer running continuously to listen for messages and print them out.
 
@@ -225,7 +223,7 @@ keep the consumer running continuously to listen for messages and print them out
 
 The code (in [`Receive.cs`](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/dotnet/Receive/Receive.cs)) has almost the same `using` statements as `Send`:
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
@@ -236,23 +234,21 @@ Setting up is the same as the publisher; we open a connection and a
 channel, and declare the queue from which we're going to consume.
 Note this matches up with the queue that `Send` publishes to.
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 class Receive
 {
     public static void Main()
     {
         var factory = new ConnectionFactory() { HostName = "localhost" };
         using (var connection = factory.CreateConnection())
+        using (var channel = connection.CreateModel())
         {
-            using (var channel = connection.CreateModel())
-            {
-                channel.QueueDeclare(queue: "hello",
-                                     durable: false,
-                                     exclusive: false,
-                                     autoDelete: false,
-                                     arguments: null);
-                ...
-            }
+            channel.QueueDeclare(queue: "hello",
+                                 durable: false,
+                                 exclusive: false,
+                                 autoDelete: false,
+                                 arguments: null);
+            ...
         }
     }
 }
@@ -267,7 +263,7 @@ queue. Since it will push us messages asynchronously, we provide a
 callback. That is what `EventingBasicConsumer.Received` event handler
 does.
 
-<pre class="sourcecode csharp">
+<pre class="lang-csharp">
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
@@ -290,7 +286,7 @@ class Receive
             var consumer = new EventingBasicConsumer(channel);
             consumer.Received += (model, ea) =>
             {
-                var body = ea.Body;
+                var body = ea.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
                 Console.WriteLine(" [x] Received {0}", message);
             };
@@ -312,16 +308,16 @@ class](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/dotnet/Receive
 
 Open two terminals.
 
-Run the consumer:
+Run the consumer first so that the topology (primarily the queue) is in place:
 
-<pre class="sourcecode powershell">
+<pre class="lang-powershell">
 cd Receive
 dotnet run
 </pre>
 
 Then run the producer:
 
-<pre class="sourcecode powershell">
+<pre class="lang-powershell">
 cd Send
 dotnet run
 </pre>

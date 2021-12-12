@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,18 +28,36 @@ This guide covers queues primarily in the context of [AMQP 0-9-1](/tutorials/amq
 however, much of the content is applicable to other supported protocols.
 
 Some protocols (e.g. STOMP and MQTT) are based around the idea of topics.
-For them, queues are an implementation detail.
+For them, queues act as data accumulation buffer for consumers.
+However, it is still important to understand the role queues play
+because many features still operate at the queue level, even for those protocols.
+
+[Streams](streams.html) is an alternative messaging data structure available in RabbitMQ.
+Streams provide different features from queues.
+
+## <a id="basics" class="anchor" href="#basics">The Basics</a>
+
+A [queue](https://en.wikipedia.org/wiki/Queue_(abstract_data_type)) is a sequential data structure
+with two primary operations: an item can be **enqueued** (added) at the tail and **dequeued** (consumed)
+from the head. Queues play a prominent role in the messaging technology space:
+many messaging protocols and tools assume that [publishers](/publishers.html) and [consumers](/consumers.html)
+communicate using a queue-like storage mechanism.
+
+Queues in RabbitMQ are [FIFO ("first in, first out")](https://en.wikipedia.org/wiki/FIFO_(computing_and_electronics)).
+Some queue features, namely priorities and [requeueing](/confirms.html) by consumers, can affect
+the ordering as observed by consumers.
+
 
 ## <a id="names" class="anchor" href="#names">Names</a>
 
 Queues have names so that applications can reference them.
 
-Applications may pick queue names or ask the broker to generate a name
+Applications may pick queue names or ask the broker to [generate a name](#server-named-queues)
 for them. Queue names may be up to 255 bytes of UTF-8 characters.
 
 Queue names starting with "amq." are reserved for internal
 use by the broker. Attempts to declare a queue with a name that
-violates this rule will result in a channel-level exception
+violates this rule will result in a [channel-level exception](channels.html)
 with reply code 403 (<code>ACCESS_REFUSED</code>).
 
 ### <a id="server-named-queues" class="anchor" href="#server-named-queues">Server-named Queues</a>
@@ -50,6 +68,15 @@ argument: The same generated name may be obtained by subsequent
 methods in the same channel by using the empty string where a queue
 name is expected. This works because the channel remembers the last
 server-generated queue name.
+
+Server-named queues are meant to be used for state that is transient
+in nature and specific to a particular consumer (application instance).
+Applications can share such names in message metadata to let other applications respond
+to them (as demonstrated in [tutorial six](/getstarted.html)).
+Otherwise, the names of server-named queues should be known and used only by the
+declaring application instance. The instance should also set up appropriate
+bindings (routing) for the queue, so that publishers can use well-known
+exchanges instead of the server-generated queue name directly.
 
 
 ## <a id="properties" class="anchor" href="#properties">Properties</a>
@@ -63,6 +90,15 @@ of mandatory properties and a map of optional ones:
  * Auto-delete (queue that has had at least one consumer is deleted when last consumer unsubscribes)
  * Arguments (optional; used by plugins and broker-specific features such as message TTL, queue length limit, etc)
 
+Note that **not all property combination make sense** in practice. For example, auto-delete
+and exclusive queues should be [server-named](#server-named-queues). Such queues are supposed to
+be used for client-specific or connection (session)-specific data.
+
+When auto-delete or exclusive queues use well-known (static) names, in case of client disconnection
+and immediate reconnection there will be a natural race condition between RabbitMQ nodes
+that will delete such queues and recovering clients that will try to re-declare them.
+This can result in client-side connection recovery failure or exceptions, and create unnecessary confusion
+or affect application availability.
 
 ### <a id="property-equivalence" class="anchor" href="#property-equivalence">Declaration and Property Equivalence</a>
 
@@ -77,26 +113,36 @@ with code 406 (<code>PRECONDITION_FAILED</code>) will be raised.
 
 ### <a id="optional-arguments" class="anchor" href="#optional-arguments">Optional Arguments</a>
 
-Optional queue arguments, also know as "x-arguments" because of their
-field name in the AMQP 0-9-1 protocol, is a map (dictionary) that can
-be provided by clients when a queue is declared.  They are used by
-plugins and broker-specific features such as
+Optional queue arguments, also known as "x-arguments" because of their
+field name in the AMQP 0-9-1 protocol, is a map (dictionary) of arbitrary key/value
+pairs that can be provided by clients when a queue is declared.
 
- * Message and queue TTL
- * Queue length limit
- * Mirroring settings
- * Max number of priorities
- * Consumer priorities
+The map is used by various features and plugins such as
+
+ * Queue type (e.g. [quorum](quorum-queues.html) or classic)
+ * [Message and queue TTL](ttl.html)
+ * [Queue length limit](maxlength.html)
+ * Legacy [classic queue mirroring](ha.html) settings
+ * Max number of [priorities](priority.html)
+ * [Consumer priorities](consumer-priority.html)
 
 and so on.
 
-Optional arguments can be provided in two ways:
+Most optional arguments can be dynamically changed after queue declaration but there are
+exceptions. For example, [queue type](/quorum-queues.html) (`x-queue-type`) and max number
+of [queue priorities](/priority.html) (`x-max-priority`) must be set at queue declaration time
+and cannot be changed after that.
+
+Optional queue arguments can be set in a couple of ways:
 
  * To groups of queues using [policies](/parameters.html#policies) (recommended)
  * On a per-queue basis when a queue is declared by a client
 
 The former option is more flexible, non-intrusive, does not require application
 modifications and redeployments. Therefore it is highly recommended for most users.
+Note that some optional arguments such as queue type or max number of priorities can
+only be provided by clients because they cannot be dynamically changed and must be known
+at declaration time.
 
 The way optional arguments are provided by clients varies from client library
 to client library but is usually an argument next to the <code>durable</code>,
@@ -104,25 +150,72 @@ to client library but is usually an argument next to the <code>durable</code>,
 declares queues.
 
 
-## <a id="server-named-queues" class="anchor" href="#server-named-queues">Message Ordering</a>
+## <a id="message-ordering" class="anchor" href="#message-ordering">Message Ordering</a>
 
-Queues in RabbitMQ are ordered collections of messages. Messages
-are enqueued and dequeued (consumed) in the [FIFO manner](https://en.wikipedia.org/wiki/FIFO_(computing_and_electronics)),
-although [priority queues](/priority.html), [sharded queues](https://github.com/rabbitmq/rabbitmq-sharding/) and other features
-may affect this.
+Queues in RabbitMQ are ordered collections of messages.
+Messages are enqueued and dequeued (delivered to consumers) in the [FIFO manner](https://en.wikipedia.org/wiki/FIFO_(computing_and_electronics)).
+
+FIFO ordering is not guaranteed for [priority](/priority.html) and [sharded queues](https://github.com/rabbitmq/rabbitmq-sharding/).
+
+Ordering also can be affected by the presence of multiple competing [consumers](/consumers.html),
+[consumer priorities](/consumers.html#priority), message redeliveries.
+This applies to redeliveries of any kind: automatic after channel closure and
+[negative consumer acknowledgements](/confirms.html).
+
+Applications can assume messages published on a single channel will be enqueued
+in publishing order in all the queues they get routed to.
+When publishing happens on multiple connections or channels, their sequences of messages
+will be routed concurrently and interleaved.
+
+Consuming applications can assume that **initial deliveries** (those where the `redelivered` property
+is set to `false`) to a single consumer are performed in the same FIFO order as they were enqueued.
+For **repeated deliveries** (the `redelivered` property is set to `true`), original ordering
+can be affected by the timing of consumer acknowledgements and redeliveries, and thus
+not guaranteed.
+
+In case of multiple consumers, messages will be dequeued for delivery in the FIFO order
+but actual delivery will happen to multiple consumers. If all of the consumers have
+equal priorities, they will be picked on a [round-robin basis](https://en.wikipedia.org/wiki/Round-robin_scheduling).
+Only consumers on channels that have not exceeded their [prefetch value](/consumers.html#prefetch)
+(the number of outstanding unacknowledged deliveries) will be considered.
 
 
 ## <a id="durability" class="anchor" href="#durability">Durability</a>
 
-Durable queues are persisted to disk and thus survive broker
-restarts. Queues that are not durable are called transient.
-Not all scenarios and use cases mandate queues to be durable.
+Queues can be durable or transient. Metadata of a durable queue is stored on disk,
+while metadata of a transient queue is stored in memory when possible.
+The same distinction is made for [messages at publishing time](/publishers.html#message-properties)
+in some protocols, e.g. AMQP 0-9-1 and MQTT.
 
-Durability of a queue does not make <em>messages</em> that
-are routed to that queue durable. If broker is taken down
-and then brought back up, durable queue will be re-declared
-during broker startup, however, only <em>persistent</em>
-messages will be recovered.
+In environments and use cases where durability is important, applications
+must use durable queues *and* make sure that publish mark published messages as persisted.
+
+Transient queues will be deleted on node boot. They therefore will not survive a node restart,
+by design. Messages in transient queues will also be discarded.
+
+Durable queues will be recovered on node boot, including messages in them published as persistent.
+Messages published as transient will be **discarded** during recovery, even if they were stored
+in durable queues.
+
+### How to Choose
+
+In most other cases, durable queues are the recommended option. For [replicated queues](#distributed),
+the only reasonable option is to use durable queues.
+
+Throughput and latency of a queue is **not affected** by whether a queue is durable or not
+in most cases. Only environments with very high queue or binding churn — that is, where queues are deleted
+and re-declared hundreds or more times a second — will see latency improvements for
+some operations, namely on bindings. The choice between durable and transient queues
+therefore comes down to the semantics of the use case.
+
+Temporary queues can be a reasonable choice for workloads with transient clients, for example,
+temporary WebSocket connections in user interfaces, mobile applications and devices
+that are expected to go offline or use switch identities. Such clients usually have
+inherently transient state that should be replaced when the client reconnects.
+
+Some queue types do not support transient queues. [Quorum queues](/quorum-queues.html) must
+be durable due to the assumptions and requirements of the underlying replication protocol,
+for example.
 
 
 ## <a id="temporary-queues" class="anchor" href="#temporary-queues">Temporary Queues</a>
@@ -143,7 +236,7 @@ is cancelled (e.g. using the <code>basic.cancel</code> in AMQP 0-9-1)
 or gone (closed channel or connection, or lost TCP connection with the server).
 
 If a queue never had any consumers, for instance, when all consumption happens
-using the <code>basic.get</code> method (the "pull" API), it wont' be automatically
+using the <code>basic.get</code> method (the "pull" API), it won't be automatically
 deleted. For such cases, use exclusive queues or queue TTL.
 
 
@@ -161,11 +254,23 @@ are only suitable for client-specific transient state.
 
 It is common to make exclusive queues server-named.
 
+In RabbitMQ versions up to and including 3.9, exclusive queues are subject to the
+[leader location selection process](/ha.html#queue-leader-location).
+To make sure it will be located on the same cluster node that the connection is established to, set
+`x-queue-master-locator="client-local"` when declaring the queue.
 
-## <a id="distributed" class="anchor" href="#distributed">Mirrored and Distributed Queues</a>
+## <a id="distributed" class="anchor" href="#distributed">Replicated and Distributed Queues</a>
 
-Queues can be [replicated across cluster nodes](/ha.html) and [federated](http://www.rabbitmq.com/federated-queues.html)
-across loosely coupled nodes or clusters. Note that mirroring and federation
+Queues can be replicated to multiple cluster nodes and [federated](https://www.rabbitmq.com/federated-queues.html)
+across loosely coupled nodes or clusters. There are two replicated queue types provided:
+
+ * [Quorum queues](/quorum-queues.html)
+ * Classic queues with [mirroring](/ha.html) enabled
+
+The difference between them is covered in the [Quorum queues](/quorum-queues.html) guide.
+Quorum queues is the recommended option for most workloads and use cases.
+
+Note that intra-cluster replication and federation
 are orthogonal features and should not be considered direct alternatives.
 
 
@@ -196,12 +301,12 @@ or when a certain amount of time passes (fraction of a second).
 regardless of their persistence property.
 
 See [Memory Usage](/memory-use.html), [Alarms](/alarms.html)
-[Memory Alarms](http://localhost:8191/memory.html), [Free Disk Space Alarms](/disk-alarms.html),
+[Memory Alarms](/memory.html), [Free Disk Space Alarms](/disk-alarms.html),
 [Production Checklist](/production-checklist.html), and [Message Store Configuration](/persistence-conf.html)
 guide for details.
 
 
-## <a id="priorities" class="anchor" href="#priorites">Priorities</a>
+## <a id="priorities" class="anchor" href="#priorities">Priorities</a>
 
 Queues can have 0 or more [priorities](/priority.html). This feature is opt-in:
 only queues that have maximum number of priorities configured via an optional argument
@@ -216,7 +321,7 @@ Currently using more priorities will consume more resources (Erlang processes).
 
 ## <a id="runtime-characteristics" class="anchor" href="#runtime-characteristics">CPU Utilisation and Parallelism Considerations</a>
 
-Currently a single queue (master or mirror) is limited to a single CPU core
+Currently a single queue replica (whether leader or follower) is limited to a single CPU core
 on its hot code path. This design therefore assumes that most systems
 use multiple queues in practice. A single queue is generally
 considered to be an anti-pattern (and not just for resource utilisation
@@ -263,7 +368,7 @@ thumb, consider using manual acknowledgement mode first.
 
 Automatic acknowledgement mode can also overwhelm
 consumers which cannot process messages as quickly as they are delivered.
-This can result in permanetly growing memory usage and/or
+This can result in permanently growing memory usage and/or
 OS swapping for the consumer process.
 
 Manual acknowledgement mode provides a way to [set a limit on the number

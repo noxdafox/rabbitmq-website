@@ -4,14 +4,14 @@
 %entities;
 ]>
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
-are made available under the terms of the under the Apache License, 
-Version 2.0 (the "License”); you may not use this file except in compliance 
+are made available under the terms of the under the Apache License,
+Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,9 +20,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-<html xmlns="http://www.w3.org/1999/xhtml" 
-      xmlns:doc="http://www.rabbitmq.com/namespaces/ad-hoc/doc"
-      xmlns:x="http://www.rabbitmq.com/2011/extensions">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:doc="https://www.rabbitmq.com/namespaces/ad-hoc/doc"
+      xmlns:x="https://www.rabbitmq.com/2011/extensions">
   <head>
     <title>Interoperability</title>
   </head>
@@ -42,7 +42,7 @@ limitations under the License.
 	    <li>the RabbitMQ clients against Qpid's 0.6 Java broker</li>
 	    <li>
 	      Qpid's <a
-	      href="http://cwiki.apache.org/qpid/pythonbrokertest.html">Python
+	      href="https://cwiki.apache.org/confluence/display/qpid/PythonBrokerTest">Python
 	      test-suite</a> against the RabbitMQ  broker
 	    </li>
 	  </ul>
@@ -153,12 +153,12 @@ limitations under the License.
             distribution.  To run the test suite, execute the
             following command in the aforementioned directory:
           </p>
-          <pre class="sourcecode bash">python2.7 ./qpid-python-test -m tests_0-9 -m tests_0-8</pre>
+          <pre class="lang-bash">python2.7 ./qpid-python-test -m tests_0-9 -m tests_0-8</pre>
           <p>
             The following table details the results of running the 0-8
             and 0-9 tests against the RabbitMQ broker.
           </p>
-	  <qpid-tests xmlns="http://www.rabbitmq.com/namespaces/ad-hoc/conformance">
+	  <qpid-tests xmlns="https://www.rabbitmq.com/namespaces/ad-hoc/conformance">
             <qpid-test name="tests_0-8.basic.BasicTests.test_ack">
               <status value="ok"/>
             </qpid-test>

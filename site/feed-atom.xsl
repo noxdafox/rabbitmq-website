@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-Copyright (c) 2007-2016 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-                xmlns:doc="http://www.rabbitmq.com/namespaces/ad-hoc/doc"
+                xmlns:doc="https://www.rabbitmq.com/namespaces/ad-hoc/doc"
                 xmlns="http://www.w3.org/2005/Atom"
                 xmlns:xhtml="http://www.w3.org/1999/xhtml"
                 exclude-result-prefixes="xhtml doc"
@@ -49,9 +49,9 @@ limitations under the License.
   <xsl:template match="xhtml:head">
     <!-- For our feed ID, the URL is as good as anything, even if it's a bit confusing.
     See http://diveintomark.org/archives/2004/05/28/howto-atom-id -->
-    <id>http://www.rabbitmq.net/news.atom</id>
-    <link rel="self" href="http://www.rabbitmq.net/news.atom"/>
-    <link rel="alternate" type="text/html" href="http://www.rabbitmq.net/news.html"/>
+    <id>https://www.rabbitmq.com/news.atom</id>
+    <link rel="self" href="https://www.rabbitmq.com/news.atom"/>
+    <link rel="alternate" type="text/html" href="https://www.rabbitmq.com/news.html"/>
     <title type="text"><xsl:value-of select="xhtml:title"/></title>
       <!--
           We transgressively omit the author, since there isn't a sensible value
@@ -63,7 +63,7 @@ limitations under the License.
   <xsl:template match="doc:item">
     <entry>
       <!-- For entry IDs, there's no good candidate.  But we use the date anyway.  -->
-      <id>tag:rabbitmq.net,2007:<xsl:value-of select="doc:date/@iso"/></id>
+      <id>tag:rabbitmq.com,2007:<xsl:value-of select="doc:date/@iso"/></id>
       <title type="text"><xsl:value-of select="doc:title"/></title>
       <updated><xsl:value-of select="doc:date/@iso"/></updated>
       <author>

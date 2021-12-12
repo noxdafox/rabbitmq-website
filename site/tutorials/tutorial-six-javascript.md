@@ -1,12 +1,12 @@
 <!--
-Copyright (c) 2007-2018 Pivotal Software, Inc.
+Copyright (c) 2007-2021 VMware, Inc. or its affiliates.
 
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the under the Apache License,
 Version 2.0 (the "License”); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,10 @@ limitations under the License.
 -->
 # RabbitMQ tutorial - Remote procedure call (RPC) SUPPRESS-RHS
 
+<xi:include href="site/tutorials/tutorials-help.xml.inc"/>
 ## Remote procedure call (RPC)
 ### (using the amqp.node client)
 
-<xi:include href="site/tutorials/tutorials-help.xml.inc"/>
 
 
 In the [second tutorial](tutorial-two-javascript.html) we learned how to
@@ -63,10 +63,14 @@ receive a response we need to send a 'callback' queue address with the
 request. We can use the default exchange.
 Let's try it:
 
-<pre class="sourcecode javascript">
-ch.assertQueue('', {exclusive: true});
+<pre class="lang-javascript">
+channel.assertQueue('', {
+  exclusive: true
+});
 
-ch.sendToQueue('rpc_queue',new Buffer('10'), { replyTo: queue_name });
+channel.sendToQueue('rpc_queue', Buffer.from('10'), {
+   replyTo: queue_name
+});
 
 # ... then code to read a response message from the callback queue ...
 </pre>
@@ -191,7 +195,7 @@ Putting it all together
 
 The Fibonacci function:
 
-<pre class="sourcecode javascript">
+<pre class="lang-javascript">
 function fibonacci(n) {
   if (n == 0 || n == 1)
     return n;
@@ -207,30 +211,39 @@ and it's probably the slowest recursive implementation possible).
 
 The code for our RPC server [rpc_server.js](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/javascript-nodejs/src/rpc_server.js) looks like this:
 
-<pre class="sourcecode javascript">
+<pre class="lang-javascript">
 #!/usr/bin/env node
 
 var amqp = require('amqplib/callback_api');
 
-amqp.connect('amqp://localhost', function(err, conn) {
-  conn.createChannel(function(err, ch) {
-    var q = 'rpc_queue';
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    var queue = 'rpc_queue';
 
-    ch.assertQueue(q, {durable: false});
-    ch.prefetch(1);
+    channel.assertQueue(queue, {
+      durable: false
+    });
+    channel.prefetch(1);
     console.log(' [x] Awaiting RPC requests');
-    ch.consume(q, function reply(msg) {
+    channel.consume(queue, function reply(msg) {
       var n = parseInt(msg.content.toString());
 
       console.log(" [.] fib(%d)", n);
 
       var r = fibonacci(n);
 
-      ch.sendToQueue(msg.properties.replyTo,
-        new Buffer(r.toString()),
-        {correlationId: msg.properties.correlationId});
+      channel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(r.toString()), {
+          correlationId: msg.properties.correlationId
+        });
 
-      ch.ack(msg);
+      channel.ack(msg);
     });
   });
 });
@@ -251,12 +264,12 @@ The server code is rather straightforward:
     to spread the load equally over multiple servers we need to set the
     `prefetch` setting on channel.
   * We use `Channel.consume` to consume messages from the queue. Then we enter the
-    callback function where do the work and send the response back.
+    callback function where we do the work and send the response back.
 
 
 The code for our RPC client [rpc_client.js](https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/javascript-nodejs/src/rpc_client.js):
 
-<pre class="sourcecode javascript">
+<pre class="lang-javascript">
 #!/usr/bin/env node
 
 var amqp = require('amqplib/callback_api');
@@ -268,24 +281,41 @@ if (args.length == 0) {
   process.exit(1);
 }
 
-amqp.connect('amqp://localhost', function(err, conn) {
-  conn.createChannel(function(err, ch) {
-    ch.assertQueue('', {exclusive: true}, function(err, q) {
-      var corr = generateUuid();
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    channel.assertQueue('', {
+      exclusive: true
+    }, function(error2, q) {
+      if (error2) {
+        throw error2;
+      }
+      var correlationId = generateUuid();
       var num = parseInt(args[0]);
 
       console.log(' [x] Requesting fib(%d)', num);
 
-      ch.consume(q.queue, function(msg) {
-        if (msg.properties.correlationId == corr) {
+      channel.consume(q.queue, function(msg) {
+        if (msg.properties.correlationId == correlationId) {
           console.log(' [.] Got %s', msg.content.toString());
-          setTimeout(function() { conn.close(); process.exit(0) }, 500);
+          setTimeout(function() {
+            connection.close();
+            process.exit(0)
+          }, 500);
         }
-      }, {noAck: true});
+      }, {
+        noAck: true
+      });
 
-      ch.sendToQueue('rpc_queue',
-      new Buffer(num.toString()),
-      { correlationId: corr, replyTo: q.queue });
+      channel.sendToQueue('rpc_queue',
+        Buffer.from(num.toString()),{
+          correlationId: correlationId,
+          replyTo: q.queue });
     });
   });
 });
@@ -303,14 +333,14 @@ Now is a good time to take a look at our full example source code for
 
 Our RPC service is now ready. We can start the server:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ./rpc_server.js
 # => [x] Awaiting RPC requests
 </pre>
 
 To request a fibonacci number run the client:
 
-<pre class="sourcecode bash">
+<pre class="lang-bash">
 ./rpc_client.js 30
 # => [x] Requesting fib(30)
 </pre>

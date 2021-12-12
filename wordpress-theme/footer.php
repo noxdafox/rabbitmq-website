@@ -3,7 +3,7 @@
     <div class="pageFooter">
       <div class='container'>
         <div class="rabbit-logo">
-          <a href="/"><img src="/img/RabbitMQ-logo-white.svg" alt="RabbitMQ"/></a>
+          <a href="/"><img src="/img/logo-rabbitmq-white.svg" alt="RabbitMQ"/></a>
         </div>
         <ul class='footerNav'>
           <li><a href="/#features">Features</a></li>
@@ -11,10 +11,10 @@
           <li><a href="/#support">Support</a></li>
           <li><a href="/#community">Community</a></li>
           <li><a href="/documentation.html">Docs</a></li>
-          <li><a href="/blog/">Blog</a></li>
+          <li><a href="https://blog.rabbitmq.com/">Blog</a></li>
         </ul>
         <p id="copyright">
-          Copyright &#169; 2007-Present <a href="https://pivotal.io/">Pivotal Software</a>, Inc. All rights reserved.
+          Copyright &#169; 2007-2021 <a href="https://tanzu.vmware.com/">VMware</a>, Inc. or its affiliates. All rights reserved.
           <a href="https://pivotal.io/terms-of-use">Terms of Use</a>,
           <a href="https://pivotal.io/privacy-policy">Privacy</a> and
           <a href="/trademark-guidelines.html">Trademark Guidelines</a>
